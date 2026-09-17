@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>업체 정보 - JUICY 파트너 게시판</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <div id="gnb"></div>
+
+  <main class="page-main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">업체 정보</h1>
+        <p class="page-subtitle">재료·장비 공급업체, AS 센터 등 매장 운영에 필요한 연락처 모음입니다</p>
+      </div>
+      <button id="writeBtn" class="btn-primary hidden">+ 업체 등록</button>
+    </div>
+
+    <div id="writeForm" class="form-card hidden">
+      <div class="form-row">
+        <div class="form-field" style="flex:2;">
+          <label>업체명</label>
+          <input id="f_name" type="text" placeholder="예: 대한 제빙 유통">
+        </div>
+        <div class="form-field">
+          <label>구분</label>
+          <select id="f_category">
+            <option value="재료">재료</option>
+            <option value="장비/AS">장비/AS</option>
+            <option value="포장재">포장재</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>담당자</label>
+          <input id="f_contact" type="text" placeholder="예: 김담당">
+        </div>
+        <div class="form-field">
+          <label>연락처</label>
+          <input id="f_phone" type="text" placeholder="02-000-0000">
+        </div>
+        <div class="form-field">
+          <label>이메일 (선택)</label>
+          <input id="f_email" type="email" placeholder="contact@company.com">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>비고 (선택)</label>
+        <textarea id="f_notes" placeholder="배송 요일, 주의사항 등"></textarea>
+      </div>
+      <div id="formError" class="error-text hidden"></div>
+      <div style="display:flex; gap:10px;">
+        <button id="submitBtn" class="btn-primary">등록</button>
+        <button id="cancelBtn" class="btn-link">취소</button>
+      </div>
+    </div>
+
+    <div id="companyList" class="card-grid"><div class="empty-state">불러오는 중...</div></div>
+  </main>
+
+  <script src="assets/supabaseClient.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    let profileRef = null;
+
+    async function loadCompanies() {
+      const { data, error } = await sb.from("companies").select("*").order("category", { ascending: true }).order("created_at", { ascending: false });
+      const listEl = document.getElementById("companyList");
+      if (error) {
+        listEl.innerHTML = `<div class="empty-state">불러오기 실패: ${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">등록된 업체 정보가 없습니다</div>';
+        return;
+      }
+      listEl.innerHTML = data.map((c) => `
+        <div class="card" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="pill pill-neutral">${escapeHtml(c.category)}</span>
+            <span style="font-size:16px; font-weight:700;">${escapeHtml(c.name)}</span>
+          </div>
+          ${c.contact_name ? `<div style="font-size:13.5px; color:var(--ink-soft);">담당자: ${escapeHtml(c.contact_name)}</div>` : ""}
+          ${c.phone ? `<div style="font-size:13.5px; color:var(--ink-soft);">연락처: ${escapeHtml(c.phone)}</div>` : ""}
+          ${c.email ? `<div style="font-size:13.5px; color:var(--ink-soft);">이메일: ${escapeHtml(c.email)}</div>` : ""}
+          ${c.notes ? `<div style="font-size:13px; color:var(--muted); white-space:pre-line; margin-top:4px;">${escapeHtml(c.notes)}</div>` : ""}
+        </div>
+      `).join("");
+    }
+
+    (async () => {
+      const auth = await requireAuth();
+      if (!auth) return;
+      profileRef = auth.profile;
+      renderGnb("company", profileRef);
+      revealPage();
+
+      if (isVisor(profileRef)) {
+        document.getElementById("writeBtn").classList.remove("hidden");
+      }
+
+      document.getElementById("writeBtn").addEventListener("click", () => {
+        document.getElementById("writeForm").classList.remove("hidden");
+        document.getElementById("writeBtn").classList.add("hidden");
+      });
+      document.getElementById("cancelBtn").addEventListener("click", () => {
+        document.getElementById("writeForm").classList.add("hidden");
+        document.getElementById("writeBtn").classList.remove("hidden");
+      });
+
+      document.getElementById("submitBtn").addEventListener("click", async () => {
+        const errEl = document.getElementById("formError");
+        clearFormError(errEl);
+        const name = document.getElementById("f_name").value.trim();
+        const category = document.getElementById("f_category").value;
+        const contact_name = document.getElementById("f_contact").value.trim() || null;
+        const phone = document.getElementById("f_phone").value.trim() || null;
+        const email = document.getElementById("f_email").value.trim() || null;
+        const notes = document.getElementById("f_notes").value.trim() || null;
+
+        if (!name) {
+          showFormError(errEl, "업체명을 입력해주세요.");
+          return;
+        }
+
+        const { error } = await sb.from("companies").insert({
+          name, category, contact_name, phone, email, notes, author_id: profileRef.id,
+        });
+
+        if (error) {
+          showFormError(errEl, "등록에 실패했습니다: " + error.message);
+          return;
+        }
+
+        ["f_name", "f_contact", "f_phone", "f_email", "f_notes"].forEach((id) => (document.getElementById(id).value = ""));
+        document.getElementById("writeForm").classList.add("hidden");
+        document.getElementById("writeBtn").classList.remove("hidden");
+        loadCompanies();
+      });
+
+      loadCompanies();
+    })();
+  </script>
+</body>
+</html>

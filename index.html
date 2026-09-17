@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JUICY 파트너 게시판</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <div id="gnb"></div>
+
+  <main class="page-main">
+    <div id="pinnedBanner"></div>
+
+    <div>
+      <h2 class="page-title" style="font-size:20px;">빠른 메뉴</h2>
+      <p class="page-subtitle">자주 찾는 메뉴를 한눈에 확인하세요</p>
+    </div>
+
+    <div class="card-grid" id="quickMenuGrid"></div>
+
+    <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap:22px;" id="recentSection">
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:16px; font-weight:700;">최근 공지사항</span>
+          <a href="notices.html" style="font-size:13px; color:var(--muted);">전체보기</a>
+        </div>
+        <div id="recentNotices"><div class="empty-state">불러오는 중...</div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:16px; font-weight:700;">최근 건의사항</span>
+          <a href="suggestions.html" style="font-size:13px; color:var(--muted);">전체보기</a>
+        </div>
+        <div id="recentSuggestions"><div class="empty-state">불러오는 중...</div></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/supabaseClient.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    (async () => {
+      const auth = await requireAuth();
+      if (!auth) return;
+      const { profile } = auth;
+      renderGnb("home", profile);
+      revealPage();
+
+      // 카운트 조회
+      const [
+        { count: noticeCount },
+        { count: pinnedCount },
+        { count: recipeCount },
+        { count: newRecipeCount },
+        { count: suggestionPendingCount },
+        { count: resourceCount },
+        { count: orderPendingCount },
+        { count: companyCount },
+      ] = await Promise.all([
+        sb.from("notices").select("*", { count: "exact", head: true }),
+        sb.from("notices").select("*", { count: "exact", head: true }).eq("is_pinned", true),
+        sb.from("recipes").select("*", { count: "exact", head: true }),
+        sb.from("recipes").select("*", { count: "exact", head: true }).eq("is_new", true),
+        sb.from("suggestions").select("*", { count: "exact", head: true }).eq("status", "답변대기"),
+        sb.from("resources").select("*", { count: "exact", head: true }),
+        sb.from("supply_requests").select("*", { count: "exact", head: true }).eq("status", "요청"),
+        sb.from("companies").select("*", { count: "exact", head: true }),
+      ]);
+
+      document.getElementById("quickMenuGrid").innerHTML = `
+        <a href="recipes.html" class="card quick-card">
+          <div class="quick-icon" style="background:var(--accent-tint); color:var(--accent);">🍹</div>
+          <div class="quick-title">신메뉴 &amp; 레시피</div>
+          <div class="quick-desc">신메뉴/기존 메뉴 제조 방법 영상과 레시피 카드를 확인하세요</div>
+          <div class="quick-footer"><span class="pill pill-accent">NEW ${newRecipeCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
+        </a>
+        <a href="notices.html" class="card quick-card">
+          <div class="quick-icon" style="background:var(--amber-tint); color:var(--amber-dark);">📣</div>
+          <div class="quick-title">공지사항</div>
+          <div class="quick-desc">회사 소식, 정책 변경, 프로모션 안내 등 필독 공지를 확인하세요</div>
+          <div class="quick-footer"><span class="pill pill-amber">필독 ${pinnedCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
+        </a>
+        <a href="suggestions.html" class="card quick-card">
+          <div class="quick-icon" style="background:var(--secondary-tint); color:var(--secondary-dark);">💬</div>
+          <div class="quick-title">건의함 · FAQ</div>
+          <div class="quick-desc">불편사항·아이디어를 남기고 답변을 받아보세요. 자주 묻는 질문도 함께 모아뒀어요</div>
+          <div class="quick-footer"><span class="pill pill-secondary">답변대기 ${suggestionPendingCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
+        </a>
+        <a href="orders.html" class="card quick-card">
+          <div class="quick-icon" style="background:var(--secondary-tint); color:var(--secondary-dark);">📦</div>
+          <div class="quick-title">본사 발주</div>
+          <div class="quick-desc">매장에 필요한 물품을 요청하면 담당자가 발주 확인 후 댓글로 안내드려요</div>
+          <div class="quick-footer"><span class="pill pill-secondary">확인대기 ${orderPendingCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
+        </a>
+        <a href="resources.html" class="card quick-card">
+          <div class="quick-icon" style="background:var(--neutral-tint); color:#6B5B47;">📁</div>
+          <div class="quick-title">자료실</div>
+          <div class="quick-desc">위생 체크리스트, POS 매뉴얼, 발주 서식 등 문서를 내려받으세요</div>
+          <div class="quick-footer"><span class="pill pill-neutral">문서 ${resourceCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
+        </a>
+        <a href="company.html" class="card quick-card">
+          <div class="quick-icon" style="background:var(--neutral-tint); color:#6B5B47;">🏢</div>
+          <div class="quick-title">업체 정보</div>
+          <div class="quick-desc">재료·장비 공급업체, AS 센터 등 운영에 필요한 연락처를 확인하세요</div>
+          <div class="quick-footer"><span class="pill pill-neutral">${companyCount || 0}곳</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
+        </a>
+      `;
+
+      // 필독 배너 (가장 최근 필독 공지 1건)
+      const { data: pinned } = await sb.from("notices").select("*").eq("is_pinned", true).order("created_at", { ascending: false }).limit(1);
+      if (pinned && pinned[0]) {
+        const n = pinned[0];
+        document.getElementById("pinnedBanner").innerHTML = `
+          <a href="notices.html" class="card" style="background:var(--amber-tint); border-color:#F3D9B8; display:flex; align-items:center; gap:14px; text-decoration:none;">
+            <span class="pill pill-amber-solid">필독</span>
+            <span style="font-size:15px; font-weight:500; color:var(--ink); flex-grow:1;">${escapeHtml(n.title)}</span>
+            <span style="font-size:13px; color:var(--muted);">${formatDate(n.created_at)}</span>
+          </a>
+        `;
+      }
+
+      // 최근 공지사항
+      const { data: recentNotices } = await sb.from("notices").select("*").order("created_at", { ascending: false }).limit(4);
+      const noticesHtml = (recentNotices || []).map((n) => `
+        <div class="list-row">
+          <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+            ${n.is_pinned ? '<span class="pill pill-amber-solid" style="font-size:11px;">필독</span>' : isWithinDays(n.created_at, 7) ? '<span class="pill pill-secondary" style="font-size:11px;">NEW</span>' : ""}
+            <span style="font-size:14.5px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(n.title)}</span>
+          </div>
+          <span style="font-size:13px; color:var(--muted); flex-shrink:0;">${formatDate(n.created_at)}</span>
+        </div>
+      `).join("");
+      document.getElementById("recentNotices").innerHTML = noticesHtml || '<div class="empty-state">등록된 공지사항이 없습니다</div>';
+
+      // 최근 건의사항 (RLS에 의해 본인 글 + 바이저는 전체가 조회됨)
+      const { data: recentSuggestions } = await sb.from("suggestions").select("*").order("created_at", { ascending: false }).limit(3);
+      const sugHtml = (recentSuggestions || []).map((s) => `
+        <div class="list-row" style="flex-direction:column; align-items:stretch; gap:6px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:14.5px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(s.title)}</span>
+            <span style="font-size:13px; color:var(--muted); flex-shrink:0;">${formatDate(s.created_at)}</span>
+          </div>
+          <span class="pill ${s.status === "답변완료" ? "pill-green" : "pill-amber"}" style="width:fit-content;">${s.status}</span>
+        </div>
+      `).join("");
+      document.getElementById("recentSuggestions").innerHTML = sugHtml || '<div class="empty-state">등록된 건의사항이 없습니다</div>';
+    })();
+  </script>
+</body>
+</html>

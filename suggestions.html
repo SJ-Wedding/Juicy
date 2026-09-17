@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>건의함 · FAQ - JUICY 파트너 게시판</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <div id="gnb"></div>
+
+  <main class="page-main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">건의함 · FAQ</h1>
+        <p class="page-subtitle">불편사항이나 아이디어를 자유롭게 남겨주세요. 자주 묻는 질문은 아래에서 먼저 확인해보세요.</p>
+      </div>
+      <button id="writeBtn" class="btn-primary">+ 건의사항 작성</button>
+    </div>
+
+    <div id="writeForm" class="form-card hidden">
+      <div class="form-field">
+        <label>제목</label>
+        <input id="f_title" type="text" placeholder="건의 제목을 입력하세요">
+      </div>
+      <div class="form-field">
+        <label>내용</label>
+        <textarea id="f_content" placeholder="내용을 자세히 적어주시면 답변에 도움이 됩니다"></textarea>
+      </div>
+      <label class="checkbox-row"><input type="checkbox" id="f_anonymous"> 익명으로 작성</label>
+      <div id="formError" class="error-text hidden"></div>
+      <div style="display:flex; gap:10px;">
+        <button id="submitBtn" class="btn-primary">등록</button>
+        <button id="cancelBtn" class="btn-link">취소</button>
+      </div>
+    </div>
+
+    <!-- FAQ 아코디언 -->
+    <div class="card faq-box">
+      <div class="faq-header">
+        <span style="font-size:15px; font-weight:700;">자주 묻는 질문</span>
+        <button id="faqAddBtn" class="btn-link hidden">+ FAQ 추가</button>
+      </div>
+      <div id="faqAddForm" class="form-card hidden" style="margin-bottom:12px;">
+        <div class="form-field"><label>질문</label><input id="faq_q" type="text"></div>
+        <div class="form-field"><label>답변</label><textarea id="faq_a"></textarea></div>
+        <div id="faqFormError" class="error-text hidden"></div>
+        <div style="display:flex; gap:10px;">
+          <button id="faqSubmitBtn" class="btn-primary">등록</button>
+          <button id="faqCancelBtn" class="btn-link">취소</button>
+        </div>
+      </div>
+      <div id="faqList"><div class="empty-state">불러오는 중...</div></div>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+      <div style="display:flex; align-items:center; gap:8px;" id="statusTabs"></div>
+    </div>
+
+    <div id="suggestionList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
+  </main>
+
+  <script src="assets/supabaseClient.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    let profileRef = null;
+    let allSuggestions = [];
+    let currentStatus = "전체";
+
+    // ---------- FAQ ----------
+    async function loadFaqs() {
+      const { data, error } = await sb.from("faqs").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+      const el = document.getElementById("faqList");
+      if (error) {
+        el.innerHTML = `<div class="empty-state">FAQ를 불러오지 못했습니다</div>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        el.innerHTML = '<div class="empty-state">등록된 FAQ가 없습니다</div>';
+        return;
+      }
+      el.innerHTML = data.map((f, idx) => `
+        <div class="faq-item ${idx === 0 ? "open" : ""}" data-idx="${idx}">
+          <div class="faq-q">
+            <span>${escapeHtml(f.question)}</span>
+            <span class="faq-chevron">▾</span>
+          </div>
+          <div class="faq-a">${escapeHtml(f.answer)}</div>
+        </div>
+      `).join("");
+      el.querySelectorAll(".faq-item").forEach((item) => {
+        item.querySelector(".faq-q").addEventListener("click", () => {
+          item.classList.toggle("open");
+        });
+      });
+    }
+
+    // ---------- Suggestions ----------
+    function renderStatusTabs() {
+      const statuses = ["전체", "답변대기", "답변완료"];
+      document.getElementById("statusTabs").innerHTML = statuses.map((s) => {
+        const count = s === "전체" ? allSuggestions.length : allSuggestions.filter((x) => x.status === s).length;
+        return `<button class="tab-pill ${s === currentStatus ? "active" : ""}" data-status="${s}">${s} ${count}</button>`;
+      }).join("");
+      document.querySelectorAll("#statusTabs .tab-pill").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          currentStatus = btn.dataset.status;
+          renderStatusTabs();
+          renderSuggestions();
+        });
+      });
+    }
+
+    function renderSuggestions() {
+      const filtered = currentStatus === "전체" ? allSuggestions : allSuggestions.filter((s) => s.status === currentStatus);
+      const listEl = document.getElementById("suggestionList");
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">건의사항이 없습니다</div>';
+        return;
+      }
+      listEl.innerHTML = filtered.map((s) => {
+        const storeLabel = s.is_anonymous ? "익명" : (s.profiles ? s.profiles.store_name : "");
+        const replies = s.suggestion_replies || [];
+        const replyHtml = replies.map((r) => `
+          <div style="background:var(--neutral-tint); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; margin-top:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="pill pill-accent">본사 답변</span>
+              <span style="font-size:12px; color:var(--muted);">${formatDate(r.created_at)}</span>
+            </div>
+            <div style="font-size:13.5px; color:var(--ink); line-height:1.55;">${escapeHtml(r.content)}</div>
+          </div>
+        `).join("");
+
+        const canReply = isVisor(profileRef) && s.status === "답변대기";
+        const replyFormHtml = canReply ? `
+          <div style="margin-top:10px; display:flex; gap:8px;">
+            <input type="text" class="reply-input" data-id="${s.id}" placeholder="답변을 입력하세요" style="flex-grow:1; font-family:inherit; font-size:13.5px; padding:9px 12px; border:1px solid var(--border); border-radius:8px;">
+            <button class="btn-primary reply-submit" data-id="${s.id}" style="padding:9px 16px;">답변등록</button>
+          </div>
+        ` : "";
+
+        return `
+          <div class="card suggestion-item">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span class="pill ${s.status === "답변완료" ? "pill-green" : "pill-amber"}">${s.status}</span>
+              <span style="font-size:15px; font-weight:700; flex-grow:1;">${escapeHtml(s.title)}</span>
+              <span style="font-size:12.5px; color:var(--muted);">${escapeHtml(storeLabel)}</span>
+              <span style="font-size:12.5px; color:var(--muted);">${formatDate(s.created_at)}</span>
+            </div>
+            <div style="margin-top:8px; font-size:14px; color:var(--ink-soft); line-height:1.55;">${escapeHtml(s.content)}</div>
+            ${replyHtml}
+            ${replyFormHtml}
+          </div>
+        `;
+      }).join("");
+
+      listEl.querySelectorAll(".reply-submit").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.id;
+          const input = listEl.querySelector(`.reply-input[data-id="${id}"]`);
+          const content = input.value.trim();
+          if (!content) return;
+          btn.disabled = true;
+          const { error: replyError } = await sb.from("suggestion_replies").insert({
+            suggestion_id: id, content, author_id: profileRef.id,
+          });
+          if (!replyError) {
+            await sb.from("suggestions").update({ status: "답변완료" }).eq("id", id);
+          }
+          btn.disabled = false;
+          loadSuggestions();
+        });
+      });
+    }
+
+    async function loadSuggestions() {
+      const { data, error } = await sb
+        .from("suggestions")
+        .select("*, profiles(store_name), suggestion_replies(id, content, created_at)")
+        .order("created_at", { ascending: false });
+      if (error) {
+        document.getElementById("suggestionList").innerHTML = `<div class="empty-state">불러오기 실패: ${escapeHtml(error.message)}</div>`;
+        return;
+      }
+      allSuggestions = data || [];
+      renderStatusTabs();
+      renderSuggestions();
+    }
+
+    (async () => {
+      const auth = await requireAuth();
+      if (!auth) return;
+      profileRef = auth.profile;
+      renderGnb("suggestions", profileRef);
+      revealPage();
+
+      if (isVisor(profileRef)) {
+        document.getElementById("faqAddBtn").classList.remove("hidden");
+      }
+
+      // 건의사항 작성 폼
+      document.getElementById("writeBtn").addEventListener("click", () => {
+        document.getElementById("writeForm").classList.remove("hidden");
+      });
+      document.getElementById("cancelBtn").addEventListener("click", () => {
+        document.getElementById("writeForm").classList.add("hidden");
+      });
+      document.getElementById("submitBtn").addEventListener("click", async () => {
+        const errEl = document.getElementById("formError");
+        clearFormError(errEl);
+        const title = document.getElementById("f_title").value.trim();
+        const content = document.getElementById("f_content").value.trim();
+        const is_anonymous = document.getElementById("f_anonymous").checked;
+        if (!title || !content) {
+          showFormError(errEl, "제목과 내용을 모두 입력해주세요.");
+          return;
+        }
+        const { error } = await sb.from("suggestions").insert({
+          title, content, is_anonymous, owner_id: profileRef.id, status: "답변대기",
+        });
+        if (error) {
+          showFormError(errEl, "등록에 실패했습니다: " + error.message);
+          return;
+        }
+        document.getElementById("f_title").value = "";
+        document.getElementById("f_content").value = "";
+        document.getElementById("f_anonymous").checked = false;
+        document.getElementById("writeForm").classList.add("hidden");
+        loadSuggestions();
+      });
+
+      // FAQ 추가 폼 (바이저 전용)
+      document.getElementById("faqAddBtn").addEventListener("click", () => {
+        document.getElementById("faqAddForm").classList.remove("hidden");
+      });
+      document.getElementById("faqCancelBtn").addEventListener("click", () => {
+        document.getElementById("faqAddForm").classList.add("hidden");
+      });
+      document.getElementById("faqSubmitBtn").addEventListener("click", async () => {
+        const errEl = document.getElementById("faqFormError");
+        clearFormError(errEl);
+        const question = document.getElementById("faq_q").value.trim();
+        const answer = document.getElementById("faq_a").value.trim();
+        if (!question || !answer) {
+          showFormError(errEl, "질문과 답변을 모두 입력해주세요.");
+          return;
+        }
+        const { error } = await sb.from("faqs").insert({ question, answer });
+        if (error) {
+          showFormError(errEl, "등록에 실패했습니다: " + error.message);
+          return;
+        }
+        document.getElementById("faq_q").value = "";
+        document.getElementById("faq_a").value = "";
+        document.getElementById("faqAddForm").classList.add("hidden");
+        loadFaqs();
+      });
+
+      loadFaqs();
+      loadSuggestions();
+    })();
+  </script>
+</body>
+</html>
