@@ -27,21 +27,8 @@
 ※ 출고 및 발주처리 - 12시 이전 입금 확인 주문건</div>
 
     <div id="writeForm" class="form-card hidden">
-      <div class="form-row">
-        <div class="form-field" style="flex:2;">
-          <label>필요한 물품</label>
-          <select id="f_item"></select>
-        </div>
-        <div class="form-field" id="qtyFieldWrap">
-          <label id="qtyLabel">수량/단위</label>
-          <select id="f_qty"></select>
-        </div>
-      </div>
-      <div id="qtyNote" class="order-note hidden"></div>
-      <div class="form-field">
-        <label>요청 사항 (선택)</label>
-        <textarea id="f_note" placeholder="희망 배송일, 참고사항 등"></textarea>
-      </div>
+      <div id="orderRows" style="display:flex; flex-direction:column; gap:12px;"></div>
+      <button id="addRowBtn" class="btn-link" style="align-self:flex-start;">+ 추가 요청 (최대 5개)</button>
       <div class="order-total" id="estimatedTotal"></div>
       <div id="formError" class="error-text hidden"></div>
       <div style="display:flex; gap:10px;">
@@ -73,15 +60,17 @@
   <script src="assets/app.js"></script>
   <script>
     // 발주 가능 품목 목록 (필요하면 이 배열만 수정하면 됩니다)
+    // extraQty가 있는 품목은 "사이즈 선택 + 수량 선택"을 함께 보여줍니다.
     const ORDER_CATALOG = [
       { name: "배망 (2000EA/BOX)", unitLabel: "수량", options: ["1박스", "2박스", "3박스", "4박스", "5박스"] },
-      { name: "반팔티셔츠", unitLabel: "Size(사이즈)", options: ["95", "100", "105"] },
+      { name: "반팔티셔츠", unitLabel: "Size(사이즈)", options: ["95", "100", "105"], extraQty: { label: "수량", options: ["1개", "2개", "3개", "4개", "5개", "6개", "7개", "8개", "9개", "10개"] } },
       { name: "앞치마 (검정/FREE)", unitLabel: "수량", options: ["1개", "2개", "3개", "4개", "5개", "6개", "7개", "8개", "9개", "10개"] },
       { name: "스냅백 (노랑/FREE)", unitLabel: "수량", options: ["1개", "2개", "3개", "4개", "5개", "6개", "7개", "8개", "9개", "10개"] },
-      { name: "맨투맨", unitLabel: "Size(사이즈)", options: ["95", "100", "105"] },
+      { name: "맨투맨", unitLabel: "Size(사이즈)", options: ["95", "100", "105"], extraQty: { label: "수량", options: ["1개", "2개", "3개", "4개", "5개", "6개", "7개", "8개", "9개", "10개"] } },
       { name: "무지 1구 비닐캐리어 (200EA/PK)", unitLabel: "수량/단위", options: ["1팩", "2팩", "3팩", "4팩", "5팩"], note: "★ 고망고 무지 1구, 2구 비닐캐리어는 합산 4PK부터 주문 가능 ★" },
       { name: "무지 2구 비닐캐리어 (200EA/PK)", unitLabel: "수량/단위", options: ["1팩", "2팩", "3팩", "4팩", "5팩"], note: "★ 고망고 무지 1구, 2구 비닐캐리어는 합산 4PK부터 주문 가능 ★" },
     ];
+    const MAX_ORDER_ROWS = 5;
     function catalogItem(name) {
       return ORDER_CATALOG.find((c) => c.name === name) || ORDER_CATALOG[0];
     }
@@ -91,19 +80,78 @@
     let currentStatus = "전체";
     let editingId = null;
     let priceMap = {}; // { 품목명: 단가 }
+    let formRows = [1]; // 작성 폼의 행 id 목록 (수정 모드일 땐 항상 1개만 사용)
+    let nextRowId = 2;
 
-    // ---------- 작성 폼: 물품 선택에 따라 수량/단위 드롭박스 갱신 ----------
-    function populateItemSelect() {
-      const sel = document.getElementById("f_item");
+    // ---------- 작성 폼: 여러 물품 행 ----------
+    function renderFormRows() {
+      const wrap = document.getElementById("orderRows");
+      wrap.innerHTML = formRows.map((rowId) => `
+        <div class="order-row" data-row="${rowId}">
+          ${formRows.length > 1 ? `<button type="button" class="order-row-remove" data-row="${rowId}">✕</button>` : ""}
+          <div class="form-row">
+            <div class="form-field" style="flex:2;">
+              <label>필요한 물품</label>
+              <select id="f_item_${rowId}" class="row-item"></select>
+            </div>
+            <div class="form-field">
+              <label id="qtyLabel_${rowId}">수량/단위</label>
+              <select id="f_qty_${rowId}" class="row-qty"></select>
+            </div>
+            <div class="form-field extra-qty-field hidden" id="extraQtyWrap_${rowId}">
+              <label id="qtyLabel2_${rowId}">수량</label>
+              <select id="f_qty2_${rowId}" class="row-qty2"></select>
+            </div>
+          </div>
+          <div id="qtyNote_${rowId}" class="order-note hidden"></div>
+        </div>
+      `).join("");
+
+      formRows.forEach((rowId) => {
+        populateItemSelect(rowId);
+        refreshRowQtyField(rowId);
+        document.getElementById(`f_item_${rowId}`).addEventListener("change", () => refreshRowQtyField(rowId));
+        document.getElementById(`f_qty_${rowId}`).addEventListener("change", refreshEstimatedTotal);
+        document.getElementById(`f_qty2_${rowId}`).addEventListener("change", refreshEstimatedTotal);
+      });
+      wrap.querySelectorAll(".order-row-remove").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          formRows = formRows.filter((id) => id !== Number(btn.dataset.row));
+          renderFormRows();
+          refreshAddRowBtn();
+          refreshEstimatedTotal();
+        });
+      });
+      refreshAddRowBtn();
+    }
+
+    function refreshAddRowBtn() {
+      const btn = document.getElementById("addRowBtn");
+      const isEditing = !!editingId;
+      btn.classList.toggle("hidden", isEditing || formRows.length >= MAX_ORDER_ROWS);
+    }
+
+    function populateItemSelect(rowId) {
+      const sel = document.getElementById(`f_item_${rowId}`);
       sel.innerHTML = ORDER_CATALOG.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
     }
 
-    function refreshQtyField() {
-      const itemName = document.getElementById("f_item").value;
+    function refreshRowQtyField(rowId) {
+      const itemName = document.getElementById(`f_item_${rowId}`).value;
       const item = catalogItem(itemName);
-      document.getElementById("qtyLabel").textContent = item.unitLabel;
-      document.getElementById("f_qty").innerHTML = item.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
-      const noteEl = document.getElementById("qtyNote");
+      document.getElementById(`qtyLabel_${rowId}`).textContent = item.unitLabel;
+      document.getElementById(`f_qty_${rowId}`).innerHTML = item.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+
+      const extraWrap = document.getElementById(`extraQtyWrap_${rowId}`);
+      if (item.extraQty) {
+        document.getElementById(`qtyLabel2_${rowId}`).textContent = item.extraQty.label;
+        document.getElementById(`f_qty2_${rowId}`).innerHTML = item.extraQty.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+        extraWrap.classList.remove("hidden");
+      } else {
+        extraWrap.classList.add("hidden");
+      }
+
+      const noteEl = document.getElementById(`qtyNote_${rowId}`);
       if (item.note) {
         noteEl.textContent = item.note;
         noteEl.classList.remove("hidden");
@@ -113,12 +161,33 @@
       refreshEstimatedTotal();
     }
 
+    // 한 행의 최종 수량 문자열을 만듭니다 (extraQty가 있으면 "95 / 3개" 형태)
+    function getRowQuantityString(rowId) {
+      const itemName = document.getElementById(`f_item_${rowId}`).value;
+      const item = catalogItem(itemName);
+      const qty = document.getElementById(`f_qty_${rowId}`).value;
+      if (item.extraQty) {
+        const qty2 = document.getElementById(`f_qty2_${rowId}`).value;
+        return `${qty} / ${qty2}`;
+      }
+      return qty;
+    }
+
     function refreshEstimatedTotal() {
-      const itemName = document.getElementById("f_item").value;
-      const qty = document.getElementById("f_qty").value;
-      const unitPrice = priceMap[itemName] || 0;
-      const multiplier = parseOrderQtyMultiplier(qty);
-      document.getElementById("estimatedTotal").textContent = `예상 금액: ${formatWon(unitPrice * multiplier)} (단가 ${formatWon(unitPrice)} × ${multiplier})`;
+      let total = 0;
+      const parts = [];
+      formRows.forEach((rowId) => {
+        const itemSel = document.getElementById(`f_item_${rowId}`);
+        if (!itemSel) return;
+        const itemName = itemSel.value;
+        const qtyStr = getRowQuantityString(rowId);
+        const unitPrice = priceMap[itemName] || 0;
+        const multiplier = parseOrderQtyMultiplier(qtyStr);
+        total += unitPrice * multiplier;
+        parts.push(`${itemName} ${formatWon(unitPrice * multiplier)}`);
+      });
+      document.getElementById("estimatedTotal").textContent =
+        formRows.length > 1 ? `예상 총 금액: ${formatWon(total)} (${parts.join(" + ")})` : `예상 금액: ${formatWon(total)}`;
     }
 
     // ---------- 발주 금액 설정 (바이저) ----------
@@ -159,11 +228,23 @@
 
     function startEdit(o) {
       editingId = o.id;
-      document.getElementById("f_item").value = o.item_name;
-      refreshQtyField();
-      document.getElementById("f_qty").value = o.quantity || "";
-      document.getElementById("f_note").value = o.note || "";
+      formRows = [1];
+      nextRowId = 2;
+      renderFormRows();
+
+      document.getElementById("f_item_1").value = o.item_name;
+      refreshRowQtyField(1);
+
+      const item = catalogItem(o.item_name);
+      if (item.extraQty && o.quantity && o.quantity.includes(" / ")) {
+        const [sizeVal, qtyVal] = o.quantity.split(" / ");
+        document.getElementById("f_qty_1").value = sizeVal;
+        document.getElementById("f_qty2_1").value = qtyVal;
+      } else {
+        document.getElementById("f_qty_1").value = o.quantity || "";
+      }
       refreshEstimatedTotal();
+
       document.getElementById("submitBtn").textContent = "수정 저장";
       document.getElementById("writeForm").classList.remove("hidden");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -210,8 +291,10 @@
         const multiplier = parseOrderQtyMultiplier(o.quantity);
         const totalAmount = unitPrice * multiplier;
 
+        // 송금 완료 처리는 본인 매장(owner) 또는 바이저 모두 가능합니다.
+        const canTogglePay = isVisor(profileRef) || o.owner_id === profileRef.id;
         const payState = (o.payment_status === "완료") ? "paid" : "unpaid";
-        const payDisabled = isVisor(profileRef) ? "" : "disabled";
+        const payDisabled = canTogglePay ? "" : "disabled";
         const payToggleHtml = `
           <div class="pay-toggle">
             <button class="pay-btn ${payState === "unpaid" ? "active state-unpaid" : ""}" data-id="${o.id}" data-value="미완료" ${payDisabled}>송금 미완료</button>
@@ -229,7 +312,6 @@
               <span style="font-size:12.5px; color:var(--muted);">${metaDateLabel(o)}</span>
             </div>
             <div class="order-total" style="margin-top:8px;">총 금액: ${formatWon(totalAmount)} <span style="font-weight:400; color:var(--muted); font-size:12.5px;">(단가 ${formatWon(unitPrice)} × ${multiplier})</span></div>
-            ${o.note ? `<div style="margin-top:8px; font-size:14px; color:var(--ink-soft); line-height:1.55;">${escapeHtml(o.note)}</div>` : ""}
             ${commentHtml}
             ${commentFormHtml}
             ${actionsHtml}
@@ -257,7 +339,7 @@
 
       listEl.querySelectorAll(".pay-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
-          if (!isVisor(profileRef)) return;
+          if (btn.disabled) return;
           const id = btn.dataset.id;
           const value = btn.dataset.value;
           const { error } = await sb.from("supply_requests").update({ payment_status: value }).eq("id", id);
@@ -302,6 +384,16 @@
       renderOrders();
     }
 
+    function resetForm() {
+      editingId = null;
+      formRows = [1];
+      nextRowId = 2;
+      renderFormRows();
+      refreshEstimatedTotal();
+      document.getElementById("submitBtn").textContent = "등록";
+      document.getElementById("writeForm").classList.add("hidden");
+    }
+
     (async () => {
       const auth = await requireAuth();
       if (!auth) return;
@@ -309,13 +401,16 @@
       renderGnb("orders", profileRef);
       revealPage();
 
-      populateItemSelect();
-      refreshQtyField();
+      renderFormRows();
       await loadPriceMap();
       refreshEstimatedTotal();
 
-      document.getElementById("f_item").addEventListener("change", refreshQtyField);
-      document.getElementById("f_qty").addEventListener("change", refreshEstimatedTotal);
+      document.getElementById("addRowBtn").addEventListener("click", () => {
+        if (formRows.length >= MAX_ORDER_ROWS) return;
+        formRows.push(nextRowId++);
+        renderFormRows();
+        refreshEstimatedTotal();
+      });
 
       if (isVisor(profileRef)) {
         document.getElementById("priceSettingBtn").classList.remove("hidden");
@@ -347,36 +442,43 @@
         document.getElementById("writeForm").classList.remove("hidden");
       });
       document.getElementById("cancelBtn").addEventListener("click", () => {
-        editingId = null;
-        document.getElementById("f_item").selectedIndex = 0;
-        refreshQtyField();
-        document.getElementById("f_note").value = "";
-        document.getElementById("submitBtn").textContent = "등록";
-        document.getElementById("writeForm").classList.add("hidden");
+        resetForm();
       });
       document.getElementById("submitBtn").addEventListener("click", async () => {
         const errEl = document.getElementById("formError");
         clearFormError(errEl);
-        const item_name = document.getElementById("f_item").value;
-        const quantity = document.getElementById("f_qty").value;
-        const note = document.getElementById("f_note").value.trim() || null;
-        if (!item_name || !quantity) {
-          showFormError(errEl, "물품과 수량/단위를 선택해주세요.");
+
+        if (editingId) {
+          const item_name = document.getElementById("f_item_1").value;
+          const quantity = getRowQuantityString(1);
+          const { error } = await sb.from("supply_requests").update({ item_name, quantity }).eq("id", editingId);
+          if (error) {
+            showFormError(errEl, "저장에 실패했습니다: " + error.message);
+            return;
+          }
+          resetForm();
+          loadOrders();
           return;
         }
-        const { error } = editingId
-          ? await sb.from("supply_requests").update({ item_name, quantity, note }).eq("id", editingId)
-          : await sb.from("supply_requests").insert({ item_name, quantity, note, owner_id: profileRef.id, status: "요청", payment_status: "미완료" });
+
+        const payloads = formRows.map((rowId) => ({
+          item_name: document.getElementById(`f_item_${rowId}`).value,
+          quantity: getRowQuantityString(rowId),
+          owner_id: profileRef.id,
+          status: "요청",
+          payment_status: "미완료",
+        }));
+        if (payloads.some((p) => !p.item_name || !p.quantity)) {
+          showFormError(errEl, "모든 행의 물품과 수량/단위를 선택해주세요.");
+          return;
+        }
+
+        const { error } = await sb.from("supply_requests").insert(payloads);
         if (error) {
           showFormError(errEl, "저장에 실패했습니다: " + error.message);
           return;
         }
-        editingId = null;
-        document.getElementById("f_item").selectedIndex = 0;
-        refreshQtyField();
-        document.getElementById("f_note").value = "";
-        document.getElementById("submitBtn").textContent = "등록";
-        document.getElementById("writeForm").classList.add("hidden");
+        resetForm();
         loadOrders();
       });
 
