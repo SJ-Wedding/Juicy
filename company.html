@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>업체 정보 - JUICY 파트너 게시판</title>
+<title>업체 정보 - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20260917d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -64,10 +64,80 @@
     <div id="companyList" class="card-grid"><div class="empty-state">불러오는 중...</div></div>
   </main>
 
-  <script src="assets/supabaseClient.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/supabaseClient.js?v=20260917d"></script>
+  <script src="assets/app.js?v=20260917d"></script>
   <script>
     let profileRef = null;
+    let editingId = null;
+    let allCompanies = [];
+
+    function resetForm() {
+      editingId = null;
+      ["f_name", "f_contact", "f_phone", "f_email", "f_notes"].forEach((id) => (document.getElementById(id).value = ""));
+      document.getElementById("f_category").value = "재료";
+      document.getElementById("submitBtn").textContent = "등록";
+      document.getElementById("writeForm").classList.add("hidden");
+      if (isVisor(profileRef)) document.getElementById("writeBtn").classList.remove("hidden");
+    }
+
+    function startEdit(c) {
+      editingId = c.id;
+      document.getElementById("f_name").value = c.name;
+      document.getElementById("f_category").value = c.category;
+      document.getElementById("f_contact").value = c.contact_name || "";
+      document.getElementById("f_phone").value = c.phone || "";
+      document.getElementById("f_email").value = c.email || "";
+      document.getElementById("f_notes").value = c.notes || "";
+      document.getElementById("submitBtn").textContent = "수정 저장";
+      document.getElementById("writeForm").classList.remove("hidden");
+      document.getElementById("writeBtn").classList.add("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderCompanies() {
+      const listEl = document.getElementById("companyList");
+      if (!allCompanies.length) {
+        listEl.innerHTML = '<div class="empty-state">등록된 업체 정보가 없습니다</div>';
+        return;
+      }
+      listEl.innerHTML = allCompanies.map((c) => `
+        <div class="card" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="pill ${categoryPillClass(c.category)}">${escapeHtml(c.category)}</span>
+            <span style="font-size:16px; font-weight:700;">${escapeHtml(c.name)}</span>
+          </div>
+          ${c.contact_name ? `<div style="font-size:13.5px; color:var(--ink-soft);">담당자: ${escapeHtml(c.contact_name)}</div>` : ""}
+          ${c.phone ? `<div style="font-size:13.5px;"><a class="phone-link" href="${toTelHref(c.phone)}"><span class="phone-icon">📞</span>${escapeHtml(c.phone)}</a></div>` : ""}
+          ${c.email ? `<div style="font-size:13.5px; color:var(--ink-soft);">이메일: ${escapeHtml(c.email)}</div>` : ""}
+          ${c.notes ? `<div style="font-size:13px; color:var(--muted); white-space:pre-line; margin-top:4px;">${escapeHtml(c.notes)}</div>` : ""}
+          <div style="font-size:12px; color:var(--muted); margin-top:2px;">${metaDateLabel(c)} 등록</div>
+          ${isVisor(profileRef) ? `
+            <div class="row-actions" style="margin-top:6px;">
+              <button class="btn-edit" data-id="${c.id}" data-action="edit">수정</button>
+              <button class="btn-delete" data-id="${c.id}" data-action="delete">삭제</button>
+            </div>
+          ` : ""}
+        </div>
+      `).join("");
+
+      listEl.querySelectorAll("[data-action='edit']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const c = allCompanies.find((x) => x.id === btn.dataset.id);
+          if (c) startEdit(c);
+        });
+      });
+      listEl.querySelectorAll("[data-action='delete']").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("이 업체 정보를 삭제할까요? 삭제하면 되돌릴 수 없습니다.")) return;
+          const { error } = await sb.from("companies").delete().eq("id", btn.dataset.id);
+          if (error) {
+            alert("삭제에 실패했습니다: " + error.message);
+            return;
+          }
+          loadCompanies();
+        });
+      });
+    }
 
     async function loadCompanies() {
       const { data, error } = await sb.from("companies").select("*").order("category", { ascending: true }).order("created_at", { ascending: false });
@@ -76,22 +146,8 @@
         listEl.innerHTML = `<div class="empty-state">불러오기 실패: ${escapeHtml(error.message)}</div>`;
         return;
       }
-      if (!data || data.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">등록된 업체 정보가 없습니다</div>';
-        return;
-      }
-      listEl.innerHTML = data.map((c) => `
-        <div class="card" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span class="pill pill-neutral">${escapeHtml(c.category)}</span>
-            <span style="font-size:16px; font-weight:700;">${escapeHtml(c.name)}</span>
-          </div>
-          ${c.contact_name ? `<div style="font-size:13.5px; color:var(--ink-soft);">담당자: ${escapeHtml(c.contact_name)}</div>` : ""}
-          ${c.phone ? `<div style="font-size:13.5px; color:var(--ink-soft);">연락처: ${escapeHtml(c.phone)}</div>` : ""}
-          ${c.email ? `<div style="font-size:13.5px; color:var(--ink-soft);">이메일: ${escapeHtml(c.email)}</div>` : ""}
-          ${c.notes ? `<div style="font-size:13px; color:var(--muted); white-space:pre-line; margin-top:4px;">${escapeHtml(c.notes)}</div>` : ""}
-        </div>
-      `).join("");
+      allCompanies = data || [];
+      renderCompanies();
     }
 
     (async () => {
@@ -110,8 +166,7 @@
         document.getElementById("writeBtn").classList.add("hidden");
       });
       document.getElementById("cancelBtn").addEventListener("click", () => {
-        document.getElementById("writeForm").classList.add("hidden");
-        document.getElementById("writeBtn").classList.remove("hidden");
+        resetForm();
       });
 
       document.getElementById("submitBtn").addEventListener("click", async () => {
@@ -129,18 +184,17 @@
           return;
         }
 
-        const { error } = await sb.from("companies").insert({
-          name, category, contact_name, phone, email, notes, author_id: profileRef.id,
-        });
+        const payload = { name, category, contact_name, phone, email, notes };
+        const { error } = editingId
+          ? await sb.from("companies").update(payload).eq("id", editingId)
+          : await sb.from("companies").insert({ ...payload, author_id: profileRef.id });
 
         if (error) {
-          showFormError(errEl, "등록에 실패했습니다: " + error.message);
+          showFormError(errEl, "저장에 실패했습니다: " + error.message);
           return;
         }
 
-        ["f_name", "f_contact", "f_phone", "f_email", "f_notes"].forEach((id) => (document.getElementById(id).value = ""));
-        document.getElementById("writeForm").classList.add("hidden");
-        document.getElementById("writeBtn").classList.remove("hidden");
+        resetForm();
         loadCompanies();
       });
 
