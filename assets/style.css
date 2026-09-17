@@ -37,6 +37,8 @@ body {
   font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--cream);
   color: var(--ink);
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -86,6 +88,57 @@ button { font-family: inherit; }
   font-size: 13px; font-weight: 600; white-space: nowrap;
 }
 .btn-link { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; }
+
+/* 모바일 햄버거 버튼 (PC에서는 숨김) */
+.gnb-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+.gnb-hamburger span { display: block; width: 100%; height: 2px; background: var(--ink); border-radius: 2px; transition: transform 0.15s, opacity 0.15s; }
+.gnb-hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.gnb-hamburger.open span:nth-child(2) { opacity: 0; }
+.gnb-hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* 모바일 슬라이드 메뉴 (기본은 숨김, 768px 이하에서만 동작) */
+.gnb-mobile-nav {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  background: var(--surface);
+  z-index: 40;
+  flex-direction: column;
+  padding: 78px 8px 20px;
+  gap: 2px;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+  box-shadow: 2px 0 16px rgba(0,0,0,0.08);
+}
+.gnb-mobile-nav.open { transform: translateX(0); }
+.gnb-mobile-nav .gnb-link { height: auto; padding: 14px 14px; border-bottom: none; border-radius: var(--radius-sm); border-left: 3px solid transparent; }
+.gnb-mobile-nav .gnb-link.active { background: var(--accent-tint); border-left-color: var(--accent); }
+.gnb-mobile-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.gnb-mobile-backdrop.open { opacity: 1; pointer-events: auto; }
 
 /* Layout */
 .page-main { max-width: 1280px; margin: 0 auto; padding: 28px 24px 60px; display: flex; flex-direction: column; gap: 20px; }
@@ -187,9 +240,62 @@ button { font-family: inherit; }
 
 .empty-state { text-align: center; color: var(--muted); font-size: 14px; padding: 24px 0; }
 
+/* 작성/수정 일시 + 수정됨 표시 */
+.edited-tag { color: var(--muted); font-weight: 500; }
+
+/* 게시글 수정/삭제 버튼 영역 */
+.row-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.btn-edit, .btn-delete {
+  font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+}
+.btn-edit:hover { border-color: var(--accent); color: var(--accent-dark); }
+.btn-delete { color: #C0392B; }
+.btn-delete:hover { border-color: #C0392B; background: #FBEAEA; }
+
+/* 전화 바로걸기 링크 */
+.phone-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-dark); font-weight: 600; }
+.phone-link .phone-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--accent-tint); font-size: 12px;
+}
+
+/* 필독 공지 캐러셀 점(dot) 인디케이터 */
+.banner-dots { display: flex; gap: 6px; flex-shrink: 0; }
+.banner-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.6); }
+.banner-dot.active { background: #fff; }
+
+/* FAQ 펼치기/접기 버튼 */
+.faq-toggle-btn {
+  font-size: 13px; font-weight: 700; color: var(--accent-dark); background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+}
+
 @media (max-width: 720px) {
   .recipe-layout { grid-template-columns: 1fr; }
   .gnb-sub { display: none; }
-  .gnb-nav { gap: 2px; }
-  .gnb-link { padding: 0 8px; font-size: 13.5px; }
+  .gnb-hamburger { display: flex; }
+  .gnb-nav { display: none; }
+  .gnb-mobile-nav, .gnb-mobile-backdrop { display: flex; }
+  .gnb-inner { padding: 0 14px; gap: 10px; }
+  .gnb-right { gap: 8px; }
+  .store-chip { padding: 6px 10px; font-size: 12px; }
+
+  .page-main { padding: 18px 14px 44px; }
+  .page-header { gap: 10px; }
+  .page-title { font-size: 20px; }
+
+  .card { padding: 16px; }
+  .card-grid { grid-template-columns: 1fr; }
+  .recipe-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+
+  .form-row { flex-direction: column; }
+  .form-row > * { min-width: 0; width: 100%; }
+
+  /* 좁은 화면에서 제목/뱃지/날짜 등이 겹치지 않고 자연스럽게 줄바꿈되도록 */
+  .notice-item, .suggestion-item, .resource-item { padding: 16px; word-break: break-word; overflow-wrap: anywhere; }
+  .list-row { flex-wrap: wrap; row-gap: 6px; }
+  .row-actions { width: 100%; justify-content: flex-end; }
+
+  #recentSection { grid-template-columns: 1fr !important; }
 }
