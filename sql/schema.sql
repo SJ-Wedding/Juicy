@@ -253,6 +253,29 @@ create policy "supply_request_comments_insert_visor" on public.supply_request_co
 
 
 -- ============================================================
+-- 10) 테이블 기본 권한 부여 (중요)
+-- RLS 정책은 "어떤 행(row)을 볼 수 있는가"만 통제합니다. 그 이전에 로그인한 사용자
+-- (authenticated 역할)가 테이블 자체를 건드릴 수 있는 기본 권한이 있어야 하므로,
+-- 아래 GRANT 문을 반드시 함께 실행해야 합니다. (실수로 빠뜨리면
+-- "permission denied for table ..." 오류가 발생합니다.)
+-- ============================================================
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete on
+  public.profiles,
+  public.notices,
+  public.recipes,
+  public.faqs,
+  public.suggestions,
+  public.suggestion_replies,
+  public.resources,
+  public.companies,
+  public.supply_requests,
+  public.supply_request_comments
+to authenticated;
+
+
+-- ============================================================
 -- (선택) 화면 미리보기용 샘플 데이터 - 필요 없으면 지우고 실행하세요.
 -- 아래 INSERT는 author_id/owner_id를 비워두면 실패하니, 먼저 계정을 만든 뒤
 -- 해당 계정의 uuid로 author_id 값을 바꿔서 실행해도 됩니다. 그냥 건너뛰어도 무방합니다.
