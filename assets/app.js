@@ -97,6 +97,34 @@ function isWithinDays(isoString, days) {
   return now - then <= days * 24 * 60 * 60 * 1000;
 }
 
+// 유튜브 링크(watch, youtu.be, shorts, embed 등 다양한 형태)에서 영상 ID를 추출합니다.
+function getYoutubeId(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") {
+      return u.pathname.slice(1).split("/")[0] || null;
+    }
+    if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
+      if (u.searchParams.get("v")) return u.searchParams.get("v");
+      const parts = u.pathname.split("/").filter(Boolean); // ["shorts", "ID"] or ["embed", "ID"]
+      if ((parts[0] === "shorts" || parts[0] === "embed" || parts[0] === "live") && parts[1]) {
+        return parts[1];
+      }
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+// 유튜브 링크면 썸네일 이미지 URL을, 아니면 null을 반환합니다.
+function getYoutubeThumbUrl(url) {
+  const id = getYoutubeId(url);
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+}
+
 function showFormError(el, message) {
   el.textContent = message;
   el.classList.remove("hidden");
