@@ -41,7 +41,7 @@ function isVisor(profile) {
   return !!profile && profile.role === "visor";
 }
 
-// GNB를 #gnb 요소 안에 그려줍니다.
+// GNB를 #gnb 요소 안에 그려줍니다. (모바일에서는 햄버거 버튼으로 접이식 메뉴가 열립니다)
 function renderGnb(activeKey, profile) {
   const gnbEl = document.getElementById("gnb");
   if (!gnbEl) return;
@@ -55,6 +55,9 @@ function renderGnb(activeKey, profile) {
   gnbEl.innerHTML = `
     <div class="gnb-inner">
       <div class="gnb-brand">
+        <button id="gnbHamburger" class="gnb-hamburger" aria-label="메뉴 열기">
+          <span></span><span></span><span></span>
+        </button>
         <span class="brand-logo">JUICY</span>
         <span class="gnb-divider"></span>
         <span class="gnb-sub">파트너 게시판</span>
@@ -65,12 +68,31 @@ function renderGnb(activeKey, profile) {
         <button id="logoutBtn" class="btn-link">로그아웃</button>
       </div>
     </div>
+    <nav class="gnb-mobile-nav" id="gnbMobileNav">${linksHtml}</nav>
+    <div class="gnb-mobile-backdrop" id="gnbMobileBackdrop"></div>
   `;
 
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     await sb.auth.signOut();
     location.href = "login.html";
   });
+
+  const hamburger = document.getElementById("gnbHamburger");
+  const mobileNav = document.getElementById("gnbMobileNav");
+  const backdrop = document.getElementById("gnbMobileBackdrop");
+  function closeMobileNav() {
+    mobileNav.classList.remove("open");
+    backdrop.classList.remove("open");
+    hamburger.classList.remove("open");
+  }
+  function toggleMobileNav() {
+    mobileNav.classList.toggle("open");
+    backdrop.classList.toggle("open");
+    hamburger.classList.toggle("open");
+  }
+  hamburger.addEventListener("click", toggleMobileNav);
+  backdrop.addEventListener("click", closeMobileNav);
+  mobileNav.querySelectorAll("a").forEach((a) => a.addEventListener("click", closeMobileNav));
 }
 
 function escapeHtml(str) {
@@ -90,11 +112,44 @@ function formatDate(isoString) {
   return `${mm}.${dd}`;
 }
 
+// 날짜 + 시간까지 함께 표시합니다 (예: 09.17 14:32)
+function formatDateTime(isoString) {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}.${dd} ${hh}:${mi}`;
+}
+
+// 작성 후 수정된 적이 있는지 여부 (updated_at이 created_at과 다르면 수정된 것으로 간주)
+function isEdited(row) {
+  if (!row || !row.updated_at || !row.created_at) return false;
+  return new Date(row.updated_at).getTime() !== new Date(row.created_at).getTime();
+}
+
+// 작성/수정 일시를 함께 표시하는 공용 문구 (수정된 경우 "(수정됨)" 문구 포함)
+function metaDateLabel(row) {
+  if (!row) return "";
+  if (isEdited(row)) {
+    return `${formatDateTime(row.updated_at)} <span class="edited-tag">(수정됨)</span>`;
+  }
+  return formatDateTime(row.created_at);
+}
+
 function isWithinDays(isoString, days) {
   if (!isoString) return false;
   const then = new Date(isoString).getTime();
   const now = Date.now();
   return now - then <= days * 24 * 60 * 60 * 1000;
+}
+
+// 문자열을 n자까지만 보여주고 넘으면 ...으로 말줄임 처리합니다.
+function truncate(str, n) {
+  if (!str) return "";
+  const s = String(str);
+  return s.length > n ? s.slice(0, n) + "…" : s;
 }
 
 // 유튜브 링크(watch, youtu.be, shorts, embed 등 다양한 형태)에서 영상 ID를 추출합니다.
@@ -123,6 +178,29 @@ function getYoutubeId(url) {
 function getYoutubeThumbUrl(url) {
   const id = getYoutubeId(url);
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+}
+
+// 전화번호 문자열에서 하이픈/공백을 제거해 tel: 링크에 쓸 수 있게 만듭니다.
+function toTelHref(phone) {
+  if (!phone) return "";
+  return "tel:" + String(phone).replace(/[^0-9+]/g, "");
+}
+
+// 분류(카테고리) 문자열마다 색상을 다르게 보여주기 위한 pill 클래스 매핑.
+// 목록에 없는 카테고리는 기본(pill-neutral)로 표시됩니다.
+const CATEGORY_PILL_MAP = {
+  // 자료실
+  "매뉴얼": "pill-accent",
+  "서식": "pill-secondary",
+  "포스터": "pill-amber",
+  // 업체 정보
+  "재료": "pill-secondary",
+  "장비/AS": "pill-accent",
+  "포장재": "pill-amber",
+};
+
+function categoryPillClass(category) {
+  return CATEGORY_PILL_MAP[category] || "pill-neutral";
 }
 
 function showFormError(el, message) {
