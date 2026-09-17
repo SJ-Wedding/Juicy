@@ -273,10 +273,17 @@ button { font-family: inherit; }
   width: 22px; height: 22px; border-radius: 50%; background: var(--accent-tint); font-size: 12px;
 }
 
-/* 필독 공지 캐러셀 점(dot) 인디케이터 */
-.banner-dots { display: flex; gap: 6px; flex-shrink: 0; }
-.banner-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.6); }
-.banner-dot.active { background: #fff; }
+/* 필독 공지 캐러셀 점(dot) 인디케이터 + 좌/우 이동 버튼 */
+.banner-dots { display: flex; gap: 6px; }
+.banner-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,0,0,0.25); }
+.banner-dot.active { background: var(--ink); }
+.banner-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.banner-nav-btn {
+  width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.25);
+  background: rgba(255,255,255,0.7); color: var(--ink); font-size: 11px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.banner-nav-btn:hover { background: #fff; }
 
 /* FAQ 펼치기/접기 버튼 */
 .faq-toggle-btn {
@@ -306,6 +313,14 @@ button { font-family: inherit; }
 .pay-toggle button.active.state-unpaid { background: var(--amber-tint); color: var(--amber-dark); }
 .pay-toggle button.active.state-paid { background: var(--green-tint); color: var(--green); }
 .pay-toggle button:disabled { cursor: default; }
+
+/* 발주 요청 - 여러 물품 행 */
+.order-row { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--neutral-tint); position: relative; }
+.order-row-remove {
+  position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%;
+  border: none; background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer;
+}
+.order-row-remove:hover { color: #C0392B; }
 
 /* 바이저 - 발주 금액 설정 모달 */
 .modal-backdrop {
