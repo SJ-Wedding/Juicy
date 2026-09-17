@@ -67,7 +67,14 @@
       submitBtn.textContent = "로그인";
 
       if (error) {
-        errorMsg.textContent = "이메일 또는 비밀번호가 올바르지 않습니다.";
+        // 원인 파악이 쉽도록 Supabase가 준 실제 메시지를 함께 보여줍니다.
+        let hint = "";
+        if (/email not confirmed/i.test(error.message)) {
+          hint = " (이메일 인증이 안 된 계정입니다. 바이저가 Supabase 대시보드에서 인증 처리해야 합니다.)";
+        } else if (/invalid login credentials/i.test(error.message)) {
+          hint = " (이메일 또는 비밀번호가 일치하지 않습니다.)";
+        }
+        errorMsg.textContent = `로그인 실패: ${error.message}${hint}`;
         errorMsg.classList.remove("hidden");
         return;
       }
