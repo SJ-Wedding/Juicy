@@ -220,6 +220,19 @@ function formatWon(n) {
   return num.toLocaleString("ko-KR") + "원";
 }
 
+// 숫자를 "12,000" 형태(천단위 콤마, "원" 접미사 없음)로 표시합니다. 입력용 필드에 사용합니다.
+function formatNumber(n) {
+  const num = Number(n) || 0;
+  return num.toLocaleString("ko-KR");
+}
+
+// "12,000" 같은 콤마 포함 문자열을 숫자로 되돌립니다.
+function parseNumber(str) {
+  if (str === null || str === undefined) return 0;
+  const cleaned = String(str).replace(/[^0-9.-]/g, "");
+  return Number(cleaned) || 0;
+}
+
 // 발주 수량/단위 문자열(예: "3박스", "2팩", "95", "95 / 3개")에서 곱해줄 개수를 뽑아냅니다.
 // "N박스"/"N팩"/"N개" 부분이 어디에 있든 그 숫자를 쓰고, 없으면(사이즈만 있는 경우 등) 1을 반환합니다.
 function parseOrderQtyMultiplier(optionStr) {
