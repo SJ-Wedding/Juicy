@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>신메뉴 레시피 - JUICY 파트너 게시판</title>
+<title>신메뉴 레시피 - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20260917d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -66,13 +66,14 @@
     </div>
   </main>
 
-  <script src="assets/supabaseClient.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/supabaseClient.js?v=20260917d"></script>
+  <script src="assets/app.js?v=20260917d"></script>
   <script>
     let allRecipes = [];
     let currentFilter = "전체";
     let selectedId = null;
     let profileRef = null;
+    let editingId = null;
 
     function renderFilterTabs() {
       const cats = ["전체", "신메뉴", "시즌 메뉴", "베이직 메뉴"];
@@ -108,16 +109,43 @@
           </div>
           <div class="recipe-card-body">
             <div style="font-size:15px; font-weight:700;">${escapeHtml(r.title)}</div>
-            <div style="font-size:12.5px; color:var(--muted);">${escapeHtml(r.category)} · ${formatDate(r.created_at)} 등록</div>
+            <div style="font-size:12.5px; color:var(--muted);">${escapeHtml(r.category)} · ${metaDateLabel(r)}</div>
+            ${isVisor(profileRef) ? `
+              <div class="row-actions" data-card-actions="1" style="margin-top:6px;">
+                <button class="btn-edit" data-id="${r.id}" data-action="edit">수정</button>
+                <button class="btn-delete" data-id="${r.id}" data-action="delete">삭제</button>
+              </div>
+            ` : ""}
           </div>
         </div>
       `;
       }).join("");
       document.querySelectorAll(".recipe-card").forEach((card) => {
-        card.addEventListener("click", () => {
+        card.addEventListener("click", (e) => {
+          if (e.target.closest("[data-card-actions]")) return;
           selectedId = card.dataset.id;
           renderGrid();
           renderDetail();
+        });
+      });
+      gridEl.querySelectorAll("[data-action='edit']").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const r = allRecipes.find((x) => x.id === btn.dataset.id);
+          if (r) startEdit(r);
+        });
+      });
+      gridEl.querySelectorAll("[data-action='delete']").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          if (!confirm("이 레시피를 삭제할까요? 삭제하면 되돌릴 수 없습니다.")) return;
+          const { error } = await sb.from("recipes").delete().eq("id", btn.dataset.id);
+          if (error) {
+            alert("삭제에 실패했습니다: " + error.message);
+            return;
+          }
+          if (selectedId === btn.dataset.id) selectedId = null;
+          loadRecipes();
         });
       });
     }
@@ -133,10 +161,11 @@
       const steps = r.steps || [];
       panel.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:16px;">
-          <div style="display:flex; align-items:center; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             ${isWithinDays(r.created_at, 14) ? '<span class="pill pill-accent-solid">NEW</span>' : ""}
-            <span style="font-size:18px; font-weight:700;">${escapeHtml(r.title)}</span>
+            <span style="font-size:18px; font-weight:700; flex-grow:1;">${escapeHtml(r.title)}</span>
           </div>
+          <div style="font-size:12.5px; color:var(--muted); margin-top:-10px;">${metaDateLabel(r)} 등록</div>
           ${r.video_url ? `<a href="${escapeHtml(r.video_url)}" target="_blank" rel="noopener" class="btn-outline">제조 영상 링크 바로가기</a>` : '<div class="empty-state" style="padding:12px 0;">등록된 영상 링크가 없습니다</div>'}
           ${ingredients.length ? `
             <div>
@@ -151,8 +180,51 @@
               </div>
             </div>` : ""}
           ${r.pdf_url ? `<a href="${escapeHtml(r.pdf_url)}" target="_blank" rel="noopener" class="btn-primary" style="justify-content:center;">레시피 카드 PDF 다운로드</a>` : ""}
+          ${isVisor(profileRef) ? `
+            <div class="row-actions" style="justify-content:flex-end;">
+              <button class="btn-edit" id="detailEditBtn">수정</button>
+              <button class="btn-delete" id="detailDeleteBtn">삭제</button>
+            </div>
+          ` : ""}
         </div>
       `;
+
+      if (isVisor(profileRef)) {
+        document.getElementById("detailEditBtn").addEventListener("click", () => startEdit(r));
+        document.getElementById("detailDeleteBtn").addEventListener("click", async () => {
+          if (!confirm("이 레시피를 삭제할까요? 삭제하면 되돌릴 수 없습니다.")) return;
+          const { error } = await sb.from("recipes").delete().eq("id", r.id);
+          if (error) {
+            alert("삭제에 실패했습니다: " + error.message);
+            return;
+          }
+          if (selectedId === r.id) selectedId = null;
+          loadRecipes();
+        });
+      }
+    }
+
+    function resetForm() {
+      editingId = null;
+      ["f_title", "f_video", "f_pdf", "f_ingredients", "f_steps"].forEach((id) => (document.getElementById(id).value = ""));
+      document.getElementById("f_category").value = "신메뉴";
+      document.getElementById("submitBtn").textContent = "등록";
+      document.getElementById("writeForm").classList.add("hidden");
+      if (isVisor(profileRef)) document.getElementById("writeBtn").classList.remove("hidden");
+    }
+
+    function startEdit(r) {
+      editingId = r.id;
+      document.getElementById("f_title").value = r.title;
+      document.getElementById("f_category").value = r.category;
+      document.getElementById("f_video").value = r.video_url || "";
+      document.getElementById("f_ingredients").value = (r.ingredients || []).join(", ");
+      document.getElementById("f_steps").value = (r.steps || []).join("\n");
+      document.getElementById("f_pdf").value = r.pdf_url || "";
+      document.getElementById("submitBtn").textContent = "수정 저장";
+      document.getElementById("writeForm").classList.remove("hidden");
+      document.getElementById("writeBtn").classList.add("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     async function loadRecipes() {
@@ -164,11 +236,12 @@
       allRecipes = data || [];
       renderFilterTabs();
       renderGrid();
+      if (selectedId && !allRecipes.find((x) => x.id === selectedId)) selectedId = null;
       if (allRecipes.length && !selectedId) {
         selectedId = allRecipes[0].id;
         renderGrid();
-        renderDetail();
       }
+      renderDetail();
     }
 
     (async () => {
@@ -187,8 +260,7 @@
         document.getElementById("writeBtn").classList.add("hidden");
       });
       document.getElementById("cancelBtn").addEventListener("click", () => {
-        document.getElementById("writeForm").classList.add("hidden");
-        document.getElementById("writeBtn").classList.remove("hidden");
+        resetForm();
       });
 
       document.getElementById("submitBtn").addEventListener("click", async () => {
@@ -206,18 +278,18 @@
           return;
         }
 
-        const { error } = await sb.from("recipes").insert({
-          title, category, video_url, pdf_url, ingredients, steps, is_new: true, author_id: profileRef.id,
-        });
+        const payload = { title, category, video_url, pdf_url, ingredients, steps };
+        const { error } = editingId
+          ? await sb.from("recipes").update(payload).eq("id", editingId)
+          : await sb.from("recipes").insert({ ...payload, is_new: true, author_id: profileRef.id });
 
         if (error) {
-          showFormError(errEl, "등록에 실패했습니다: " + error.message);
+          showFormError(errEl, "저장에 실패했습니다: " + error.message);
           return;
         }
 
-        ["f_title", "f_video", "f_pdf", "f_ingredients", "f_steps"].forEach((id) => (document.getElementById(id).value = ""));
-        document.getElementById("writeForm").classList.add("hidden");
-        document.getElementById("writeBtn").classList.remove("hidden");
+        if (editingId) selectedId = editingId;
+        resetForm();
         loadRecipes();
       });
 
