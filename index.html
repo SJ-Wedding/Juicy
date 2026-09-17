@@ -63,7 +63,7 @@
         sb.from("notices").select("*", { count: "exact", head: true }),
         sb.from("notices").select("*", { count: "exact", head: true }).eq("is_pinned", true),
         sb.from("recipes").select("*", { count: "exact", head: true }),
-        sb.from("recipes").select("*", { count: "exact", head: true }).eq("is_new", true),
+        sb.from("recipes").select("*", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
         sb.from("suggestions").select("*", { count: "exact", head: true }).eq("status", "답변대기"),
         sb.from("resources").select("*", { count: "exact", head: true }),
         sb.from("supply_requests").select("*", { count: "exact", head: true }).eq("status", "요청"),
