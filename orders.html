@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>본사 발주 - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20260917d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -56,8 +56,8 @@
     </div>
   </div>
 
-  <script src="assets/supabaseClient.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/supabaseClient.js?v=20260917d"></script>
+  <script src="assets/app.js?v=20260917d"></script>
   <script>
     // 발주 가능 품목 목록 (필요하면 이 배열만 수정하면 됩니다)
     // extraQty가 있는 품목은 "사이즈 선택 + 수량 선택"을 함께 보여줍니다.
@@ -84,7 +84,25 @@
     let nextRowId = 2;
 
     // ---------- 작성 폼: 여러 물품 행 ----------
+    // 행을 다시 그리기 전에 현재 선택되어 있던 값들을 저장해둡니다 (추가 요청 시 기존 선택이 초기화되는 오류 방지)
+    function captureRowState() {
+      const state = {};
+      formRows.forEach((rowId) => {
+        const itemEl = document.getElementById(`f_item_${rowId}`);
+        if (!itemEl) return;
+        const qtyEl = document.getElementById(`f_qty_${rowId}`);
+        const qty2El = document.getElementById(`f_qty2_${rowId}`);
+        state[rowId] = {
+          item: itemEl.value,
+          qty: qtyEl ? qtyEl.value : null,
+          qty2: qty2El ? qty2El.value : null,
+        };
+      });
+      return state;
+    }
+
     function renderFormRows() {
+      const prevState = captureRowState();
       const wrap = document.getElementById("orderRows");
       wrap.innerHTML = formRows.map((rowId) => `
         <div class="order-row" data-row="${rowId}">
@@ -108,8 +126,12 @@
       `).join("");
 
       formRows.forEach((rowId) => {
+        const saved = prevState[rowId];
         populateItemSelect(rowId);
-        refreshRowQtyField(rowId);
+        if (saved && saved.item) {
+          document.getElementById(`f_item_${rowId}`).value = saved.item;
+        }
+        refreshRowQtyField(rowId, saved);
         document.getElementById(`f_item_${rowId}`).addEventListener("change", () => refreshRowQtyField(rowId));
         document.getElementById(`f_qty_${rowId}`).addEventListener("change", refreshEstimatedTotal);
         document.getElementById(`f_qty2_${rowId}`).addEventListener("change", refreshEstimatedTotal);
@@ -127,8 +149,7 @@
 
     function refreshAddRowBtn() {
       const btn = document.getElementById("addRowBtn");
-      const isEditing = !!editingId;
-      btn.classList.toggle("hidden", isEditing || formRows.length >= MAX_ORDER_ROWS);
+      btn.classList.toggle("hidden", formRows.length >= MAX_ORDER_ROWS);
     }
 
     function populateItemSelect(rowId) {
@@ -136,16 +157,23 @@
       sel.innerHTML = ORDER_CATALOG.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
     }
 
-    function refreshRowQtyField(rowId) {
+    // savedState가 있으면(행을 다시 그리는 경우) 이전에 선택했던 수량/단위 값을 그대로 복원합니다.
+    function refreshRowQtyField(rowId, savedState) {
       const itemName = document.getElementById(`f_item_${rowId}`).value;
       const item = catalogItem(itemName);
       document.getElementById(`qtyLabel_${rowId}`).textContent = item.unitLabel;
       document.getElementById(`f_qty_${rowId}`).innerHTML = item.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+      if (savedState && savedState.qty && item.options.includes(savedState.qty)) {
+        document.getElementById(`f_qty_${rowId}`).value = savedState.qty;
+      }
 
       const extraWrap = document.getElementById(`extraQtyWrap_${rowId}`);
       if (item.extraQty) {
         document.getElementById(`qtyLabel2_${rowId}`).textContent = item.extraQty.label;
         document.getElementById(`f_qty2_${rowId}`).innerHTML = item.extraQty.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join("");
+        if (savedState && savedState.qty2 && item.extraQty.options.includes(savedState.qty2)) {
+          document.getElementById(`f_qty2_${rowId}`).value = savedState.qty2;
+        }
         extraWrap.classList.remove("hidden");
       } else {
         extraWrap.classList.add("hidden");
@@ -201,9 +229,16 @@
       document.getElementById("priceRows").innerHTML = ORDER_CATALOG.map((c) => `
         <div class="price-row">
           <span style="font-size:13.5px;">${escapeHtml(c.name)}</span>
-          <input type="number" min="0" step="10" class="price-input" data-name="${escapeHtml(c.name)}" value="${priceMap[c.name] || 0}">
+          <input type="text" inputmode="numeric" class="price-input" data-name="${escapeHtml(c.name)}" value="${formatNumber(priceMap[c.name] || 0)}">
         </div>
       `).join("");
+      // 입력하는 동안에도 천단위 콤마를 실시간으로 반영합니다.
+      document.querySelectorAll(".price-input").forEach((input) => {
+        input.addEventListener("input", () => {
+          const num = parseNumber(input.value);
+          input.value = num ? formatNumber(num) : "";
+        });
+      });
       document.getElementById("priceModalBackdrop").classList.remove("hidden");
     }
     function closePriceModal() {
@@ -226,23 +261,34 @@
       });
     }
 
+    // 한 발주 건(row)에 담긴 물품 목록을 꺼냅니다. items(배열)로 저장된 새 방식과
+    // item_name/quantity(단일)로 저장된 예전 방식을 모두 같은 형태로 다룰 수 있게 해줍니다.
+    function getOrderItemsList(o) {
+      if (o.items && o.items.length) return o.items;
+      return [{ item_name: o.item_name, quantity: o.quantity }];
+    }
+
     function startEdit(o) {
       editingId = o.id;
-      formRows = [1];
-      nextRowId = 2;
+      const itemsList = getOrderItemsList(o);
+      formRows = itemsList.map((_, i) => i + 1);
+      nextRowId = itemsList.length + 1;
       renderFormRows();
 
-      document.getElementById("f_item_1").value = o.item_name;
-      refreshRowQtyField(1);
+      itemsList.forEach((it, i) => {
+        const rowId = i + 1;
+        document.getElementById(`f_item_${rowId}`).value = it.item_name;
+        refreshRowQtyField(rowId);
 
-      const item = catalogItem(o.item_name);
-      if (item.extraQty && o.quantity && o.quantity.includes(" / ")) {
-        const [sizeVal, qtyVal] = o.quantity.split(" / ");
-        document.getElementById("f_qty_1").value = sizeVal;
-        document.getElementById("f_qty2_1").value = qtyVal;
-      } else {
-        document.getElementById("f_qty_1").value = o.quantity || "";
-      }
+        const item = catalogItem(it.item_name);
+        if (item.extraQty && it.quantity && it.quantity.includes(" / ")) {
+          const [sizeVal, qtyVal] = it.quantity.split(" / ");
+          document.getElementById(`f_qty_${rowId}`).value = sizeVal;
+          document.getElementById(`f_qty2_${rowId}`).value = qtyVal;
+        } else {
+          document.getElementById(`f_qty_${rowId}`).value = it.quantity || "";
+        }
+      });
       refreshEstimatedTotal();
 
       document.getElementById("submitBtn").textContent = "수정 저장";
@@ -287,9 +333,23 @@
           </div>
         ` : "";
 
-        const unitPrice = priceMap[o.item_name] || 0;
-        const multiplier = parseOrderQtyMultiplier(o.quantity);
-        const totalAmount = unitPrice * multiplier;
+        // 한 번에 여러 물품을 요청한 경우 items 배열에, 예전 방식(단일 물품)은 item_name/quantity에 들어있습니다.
+        const itemsList = getOrderItemsList(o);
+        const totalAmount = itemsList.reduce((sum, it) => sum + (priceMap[it.item_name] || 0) * parseOrderQtyMultiplier(it.quantity), 0);
+
+        const itemsLineHtml = itemsList.length === 1
+          ? `<span style="font-size:15px; font-weight:700; flex-grow:1;">${escapeHtml(itemsList[0].item_name)}${itemsList[0].quantity ? ` · ${escapeHtml(itemsList[0].quantity)}` : ""}</span>`
+          : `<span style="font-size:15px; font-weight:700; flex-grow:1;">발주 요청 ${itemsList.length}건 묶음</span>`;
+
+        const itemsBreakdownHtml = itemsList.length > 1 ? `
+          <div style="display:flex; flex-direction:column; gap:5px; margin-top:8px; padding:10px 12px; background:var(--neutral-tint); border-radius:8px;">
+            ${itemsList.map((it) => {
+              const up = priceMap[it.item_name] || 0;
+              const mult = parseOrderQtyMultiplier(it.quantity);
+              return `<div style="display:flex; justify-content:space-between; gap:8px; font-size:13px; color:var(--ink-soft);"><span>${escapeHtml(it.item_name)}${it.quantity ? ` · ${escapeHtml(it.quantity)}` : ""}</span><span style="flex-shrink:0;">${formatWon(up * mult)}</span></div>`;
+            }).join("")}
+          </div>
+        ` : "";
 
         // 송금 완료 처리는 본인 매장(owner) 또는 바이저 모두 가능합니다.
         const canTogglePay = isVisor(profileRef) || o.owner_id === profileRef.id;
@@ -307,11 +367,12 @@
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
               <span class="pill ${o.status === "발주완료" ? "pill-green" : "pill-amber"}">${o.status}</span>
               ${payToggleHtml}
-              <span style="font-size:15px; font-weight:700; flex-grow:1;">${escapeHtml(o.item_name)}${o.quantity ? ` · ${escapeHtml(o.quantity)}` : ""}</span>
+              ${itemsLineHtml}
               <span style="font-size:12.5px; color:var(--muted);">${escapeHtml(storeLabel)}</span>
               <span style="font-size:12.5px; color:var(--muted);">${metaDateLabel(o)}</span>
             </div>
-            <div class="order-total" style="margin-top:8px;">총 금액: ${formatWon(totalAmount)} <span style="font-weight:400; color:var(--muted); font-size:12.5px;">(단가 ${formatWon(unitPrice)} × ${multiplier})</span></div>
+            <div class="order-total" style="margin-top:8px;">총 금액: ${formatWon(totalAmount)} ${itemsList.length === 1 ? `<span style="font-weight:400; color:var(--muted); font-size:12.5px;">(단가 ${formatWon(priceMap[itemsList[0].item_name] || 0)} × ${parseOrderQtyMultiplier(itemsList[0].quantity)})</span>` : ""}</div>
+            ${itemsBreakdownHtml}
             ${commentHtml}
             ${commentFormHtml}
             ${actionsHtml}
@@ -425,7 +486,7 @@
         clearFormError(errEl);
         const rows = Array.from(document.querySelectorAll(".price-input")).map((input) => ({
           item_name: input.dataset.name,
-          unit_price: Number(input.value) || 0,
+          unit_price: parseNumber(input.value),
         }));
         const { error } = await sb.from("order_item_prices").upsert(rows, { onConflict: "item_name" });
         if (error) {
@@ -448,10 +509,18 @@
         const errEl = document.getElementById("formError");
         clearFormError(errEl);
 
+        const itemsArr = formRows.map((rowId) => ({
+          item_name: document.getElementById(`f_item_${rowId}`).value,
+          quantity: getRowQuantityString(rowId),
+        }));
+        if (itemsArr.some((it) => !it.item_name || !it.quantity)) {
+          showFormError(errEl, "모든 행의 물품과 수량/단위를 선택해주세요.");
+          return;
+        }
+
         if (editingId) {
-          const item_name = document.getElementById("f_item_1").value;
-          const quantity = getRowQuantityString(1);
-          const { error } = await sb.from("supply_requests").update({ item_name, quantity }).eq("id", editingId);
+          // item_name/quantity(예전 단일 저장 방식)는 비워서 items 배열 방식으로 통일합니다.
+          const { error } = await sb.from("supply_requests").update({ items: itemsArr, item_name: null, quantity: null }).eq("id", editingId);
           if (error) {
             showFormError(errEl, "저장에 실패했습니다: " + error.message);
             return;
@@ -461,19 +530,13 @@
           return;
         }
 
-        const payloads = formRows.map((rowId) => ({
-          item_name: document.getElementById(`f_item_${rowId}`).value,
-          quantity: getRowQuantityString(rowId),
+        // 여러 물품을 한 번에 요청해도 발주 목록에는 하나의 요청 건으로 묶여서 표시됩니다.
+        const { error } = await sb.from("supply_requests").insert({
+          items: itemsArr,
           owner_id: profileRef.id,
           status: "요청",
           payment_status: "미완료",
-        }));
-        if (payloads.some((p) => !p.item_name || !p.quantity)) {
-          showFormError(errEl, "모든 행의 물품과 수량/단위를 선택해주세요.");
-          return;
-        }
-
-        const { error } = await sb.from("supply_requests").insert(payloads);
+        });
         if (error) {
           showFormError(errEl, "저장에 실패했습니다: " + error.message);
           return;
