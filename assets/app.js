@@ -58,7 +58,7 @@ function renderGnb(activeKey, profile) {
         <button id="gnbHamburger" class="gnb-hamburger" aria-label="메뉴 열기">
           <span></span><span></span><span></span>
         </button>
-        <span class="brand-logo">JUICY</span>
+        <span class="brand-logo">GOMANGO</span>
         <span class="gnb-divider"></span>
         <span class="gnb-sub">파트너 게시판</span>
       </div>
@@ -201,6 +201,30 @@ const CATEGORY_PILL_MAP = {
 
 function categoryPillClass(category) {
   return CATEGORY_PILL_MAP[category] || "pill-neutral";
+}
+
+// 건의함 구분(문의사항/건의사항/메뉴 의견)별 색상
+const SUGGESTION_CATEGORY_PILL_MAP = {
+  "문의사항": "pill-info",
+  "건의사항": "pill-amber",
+  "메뉴 의견": "pill-accent",
+};
+function suggestionCategoryPillClass(category) {
+  return SUGGESTION_CATEGORY_PILL_MAP[category] || "pill-neutral";
+}
+
+// 금액을 "12,000원" 형태로 표시합니다.
+function formatWon(n) {
+  const num = Number(n) || 0;
+  return num.toLocaleString("ko-KR") + "원";
+}
+
+// 발주 수량/단위 문자열(예: "3박스", "2팩", "95")에서 곱해줄 개수를 뽑아냅니다.
+// "N박스"/"N팩"/"N개" 형태면 N을, 그 외(사이즈 등)는 1을 반환합니다.
+function parseOrderQtyMultiplier(optionStr) {
+  if (!optionStr) return 1;
+  const m = String(optionStr).match(/^(\d+)(박스|팩|개)$/);
+  return m ? parseInt(m[1], 10) : 1;
 }
 
 function showFormError(el, message) {
