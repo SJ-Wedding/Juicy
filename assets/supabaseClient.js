@@ -4,7 +4,7 @@
 // 2) 이 파일은 브라우저에 그대로 노출됩니다. anon key는 공개되어도 되는 키이지만
 //    (RLS 정책이 실제 접근 권한을 통제합니다), service_role 키는 절대 여기에 넣지 마세요.
 // ============================================================
-const SUPABASE_URL = "https://ilqdthjbravrcaprbbsx.supabase.co/rest/v1/"; // TODO: 본인 프로젝트 URL로 변경
+const SUPABASE_URL = "https://ilqdthjbravrcaprbbsx.supabase.co"; // TODO: 본인 프로젝트 URL로 변경
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlscWR0aGpicmF2cmNhcHJiYnN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2MjQ2NzAsImV4cCI6MjEwNTIwMDY3MH0.d7YeDWvxWZVMHUCQU98oYBeVG6g81B4_Vujgzdn8lMA"; // TODO: 본인 anon public key로 변경
 
 // window.supabase 는 CDN으로 불러온 supabase-js 라이브러리 전역 객체입니다.
