@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>건의함 · FAQ - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20260917d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -24,8 +24,8 @@
       <div class="form-field">
         <label>구분</label>
         <select id="f_type">
-          <option value="문의사항">문의사항</option>
           <option value="건의사항" selected>건의사항</option>
+          <option value="문의사항">문의사항</option>
           <option value="메뉴 의견">메뉴 의견</option>
         </select>
       </div>
@@ -72,8 +72,8 @@
     <div id="suggestionList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
   </main>
 
-  <script src="assets/supabaseClient.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/supabaseClient.js?v=20260917d"></script>
+  <script src="assets/app.js?v=20260917d"></script>
   <script>
     let profileRef = null;
     let allSuggestions = [];
