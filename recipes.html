@@ -96,18 +96,23 @@
         gridEl.innerHTML = '<div class="empty-state">등록된 레시피가 없습니다</div>';
         return;
       }
-      gridEl.innerHTML = filtered.map((r) => `
+      gridEl.innerHTML = filtered.map((r) => {
+        const thumbUrl = getYoutubeThumbUrl(r.video_url);
+        const isNew = isWithinDays(r.created_at, 14);
+        return `
         <div class="recipe-card ${r.id === selectedId ? "selected" : ""}" data-id="${r.id}">
           <div class="recipe-thumb">
-            ${r.is_new ? '<span class="pill pill-accent-solid" style="position:absolute; top:10px; left:10px;">NEW</span>' : ""}
-            <span style="font-size:28px;">▶</span>
+            ${thumbUrl ? `<img class="recipe-thumb-img" src="${escapeHtml(thumbUrl)}" alt="" loading="lazy">` : ""}
+            ${isNew ? '<span class="pill pill-accent-solid" style="position:absolute; top:10px; left:10px; z-index:2;">NEW</span>' : ""}
+            <span class="recipe-thumb-play ${thumbUrl ? "" : "no-video"}">▶</span>
           </div>
           <div class="recipe-card-body">
             <div style="font-size:15px; font-weight:700;">${escapeHtml(r.title)}</div>
             <div style="font-size:12.5px; color:var(--muted);">${escapeHtml(r.category)} · ${formatDate(r.created_at)} 등록</div>
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
       document.querySelectorAll(".recipe-card").forEach((card) => {
         card.addEventListener("click", () => {
           selectedId = card.dataset.id;
@@ -129,7 +134,7 @@
       panel.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:16px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            ${r.is_new ? '<span class="pill pill-accent-solid">NEW</span>' : ""}
+            ${isWithinDays(r.created_at, 14) ? '<span class="pill pill-accent-solid">NEW</span>' : ""}
             <span style="font-size:18px; font-weight:700;">${escapeHtml(r.title)}</span>
           </div>
           ${r.video_url ? `<a href="${escapeHtml(r.video_url)}" target="_blank" rel="noopener" class="btn-outline">제조 영상 링크 바로가기</a>` : '<div class="empty-state" style="padding:12px 0;">등록된 영상 링크가 없습니다</div>'}
