@@ -58,7 +58,7 @@ function renderGnb(activeKey, profile) {
         <button id="gnbHamburger" class="gnb-hamburger" aria-label="메뉴 열기">
           <span></span><span></span><span></span>
         </button>
-        <span class="brand-logo">GOMANGO</span>
+        <a href="index.html" class="brand-logo" style="text-decoration:none;">GOMANGO</a>
         <span class="gnb-divider"></span>
         <span class="gnb-sub">파트너 게시판</span>
       </div>
@@ -188,14 +188,15 @@ function toTelHref(phone) {
 
 // 분류(카테고리) 문자열마다 색상을 다르게 보여주기 위한 pill 클래스 매핑.
 // 목록에 없는 카테고리는 기본(pill-neutral)로 표시됩니다.
+// (pill-accent는 브랜드 노란색이라 흰 배경 위에서는 색이 잘 안 보여서 분류 태그에는 쓰지 않았습니다)
 const CATEGORY_PILL_MAP = {
   // 자료실
-  "매뉴얼": "pill-accent",
+  "매뉴얼": "pill-info",
   "서식": "pill-secondary",
   "포스터": "pill-amber",
   // 업체 정보
   "재료": "pill-secondary",
-  "장비/AS": "pill-accent",
+  "장비/AS": "pill-info",
   "포장재": "pill-amber",
 };
 
@@ -207,7 +208,7 @@ function categoryPillClass(category) {
 const SUGGESTION_CATEGORY_PILL_MAP = {
   "문의사항": "pill-info",
   "건의사항": "pill-amber",
-  "메뉴 의견": "pill-accent",
+  "메뉴 의견": "pill-secondary",
 };
 function suggestionCategoryPillClass(category) {
   return SUGGESTION_CATEGORY_PILL_MAP[category] || "pill-neutral";
@@ -219,11 +220,11 @@ function formatWon(n) {
   return num.toLocaleString("ko-KR") + "원";
 }
 
-// 발주 수량/단위 문자열(예: "3박스", "2팩", "95")에서 곱해줄 개수를 뽑아냅니다.
-// "N박스"/"N팩"/"N개" 형태면 N을, 그 외(사이즈 등)는 1을 반환합니다.
+// 발주 수량/단위 문자열(예: "3박스", "2팩", "95", "95 / 3개")에서 곱해줄 개수를 뽑아냅니다.
+// "N박스"/"N팩"/"N개" 부분이 어디에 있든 그 숫자를 쓰고, 없으면(사이즈만 있는 경우 등) 1을 반환합니다.
 function parseOrderQtyMultiplier(optionStr) {
   if (!optionStr) return 1;
-  const m = String(optionStr).match(/^(\d+)(박스|팩|개)$/);
+  const m = String(optionStr).match(/(\d+)\s*(박스|팩|개)/);
   return m ? parseInt(m[1], 10) : 1;
 }
 
