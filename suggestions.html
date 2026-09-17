@@ -79,26 +79,47 @@
     let allSuggestions = [];
     let currentStatus = "전체";
     let editingId = null;
+    let allFaqs = [];
+    let faqEditingId = null;
 
     // ---------- FAQ ----------
-    async function loadFaqs() {
-      const { data, error } = await sb.from("faqs").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+    function startFaqEdit(f) {
+      faqEditingId = f.id;
+      document.getElementById("faq_q").value = f.question;
+      document.getElementById("faq_a").value = f.answer;
+      document.getElementById("faqSubmitBtn").textContent = "수정 저장";
+      document.getElementById("faqAddForm").classList.remove("hidden");
+    }
+
+    function resetFaqForm() {
+      faqEditingId = null;
+      document.getElementById("faq_q").value = "";
+      document.getElementById("faq_a").value = "";
+      document.getElementById("faqSubmitBtn").textContent = "등록";
+      document.getElementById("faqAddForm").classList.add("hidden");
+    }
+
+    function renderFaqs() {
       const el = document.getElementById("faqList");
-      if (error) {
-        el.innerHTML = `<div class="empty-state">FAQ를 불러오지 못했습니다</div>`;
-        return;
-      }
-      if (!data || data.length === 0) {
+      if (!allFaqs.length) {
         el.innerHTML = '<div class="empty-state">등록된 FAQ가 없습니다</div>';
         return;
       }
-      el.innerHTML = data.map((f, idx) => `
+      el.innerHTML = allFaqs.map((f, idx) => `
         <div class="faq-item" data-idx="${idx}">
           <div class="faq-q">
             <span>${escapeHtml(f.question)}</span>
             <span class="faq-chevron">▾</span>
           </div>
-          <div class="faq-a">${escapeHtml(f.answer)}</div>
+          <div class="faq-a">
+            <div>${escapeHtml(f.answer)}</div>
+            ${isVisor(profileRef) ? `
+              <div class="row-actions" style="margin-top:10px;">
+                <button class="btn-edit" data-id="${f.id}" data-action="faq-edit">수정</button>
+                <button class="btn-delete" data-id="${f.id}" data-action="faq-delete">삭제</button>
+              </div>
+            ` : ""}
+          </div>
         </div>
       `).join("");
       el.querySelectorAll(".faq-item").forEach((item) => {
@@ -106,6 +127,34 @@
           item.classList.toggle("open");
         });
       });
+      el.querySelectorAll("[data-action='faq-edit']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const f = allFaqs.find((x) => x.id === btn.dataset.id);
+          if (f) startFaqEdit(f);
+        });
+      });
+      el.querySelectorAll("[data-action='faq-delete']").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("이 FAQ를 삭제할까요? 삭제하면 되돌릴 수 없습니다.")) return;
+          const { error } = await sb.from("faqs").delete().eq("id", btn.dataset.id);
+          if (error) {
+            alert("삭제에 실패했습니다: " + error.message);
+            return;
+          }
+          loadFaqs();
+        });
+      });
+    }
+
+    async function loadFaqs() {
+      const { data, error } = await sb.from("faqs").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+      const el = document.getElementById("faqList");
+      if (error) {
+        el.innerHTML = `<div class="empty-state">FAQ를 불러오지 못했습니다</div>`;
+        return;
+      }
+      allFaqs = data || [];
+      renderFaqs();
     }
 
     // ---------- Suggestions ----------
@@ -298,10 +347,14 @@
 
       // FAQ 추가 폼 (바이저 전용)
       document.getElementById("faqAddBtn").addEventListener("click", () => {
+        faqEditingId = null;
+        document.getElementById("faq_q").value = "";
+        document.getElementById("faq_a").value = "";
+        document.getElementById("faqSubmitBtn").textContent = "등록";
         document.getElementById("faqAddForm").classList.remove("hidden");
       });
       document.getElementById("faqCancelBtn").addEventListener("click", () => {
-        document.getElementById("faqAddForm").classList.add("hidden");
+        resetFaqForm();
       });
       document.getElementById("faqSubmitBtn").addEventListener("click", async () => {
         const errEl = document.getElementById("faqFormError");
@@ -312,14 +365,14 @@
           showFormError(errEl, "질문과 답변을 모두 입력해주세요.");
           return;
         }
-        const { error } = await sb.from("faqs").insert({ question, answer });
+        const { error } = faqEditingId
+          ? await sb.from("faqs").update({ question, answer }).eq("id", faqEditingId)
+          : await sb.from("faqs").insert({ question, answer });
         if (error) {
-          showFormError(errEl, "등록에 실패했습니다: " + error.message);
+          showFormError(errEl, "저장에 실패했습니다: " + error.message);
           return;
         }
-        document.getElementById("faq_q").value = "";
-        document.getElementById("faq_a").value = "";
-        document.getElementById("faqAddForm").classList.add("hidden");
+        resetFaqForm();
         loadFaqs();
       });
 
