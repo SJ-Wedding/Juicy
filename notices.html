@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>공지사항 - JUICY 파트너 게시판</title>
+<title>공지사항 - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=20260917d">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -51,10 +51,77 @@
     <div id="noticeList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
   </main>
 
-  <script src="assets/supabaseClient.js"></script>
-  <script src="assets/app.js"></script>
+  <script src="assets/supabaseClient.js?v=20260917d"></script>
+  <script src="assets/app.js?v=20260917d"></script>
   <script>
     let profileRef = null;
+    let editingId = null;
+    let allNotices = [];
+
+    function resetForm() {
+      editingId = null;
+      document.getElementById("f_title").value = "";
+      document.getElementById("f_content").value = "";
+      document.getElementById("f_category").value = "일반";
+      document.getElementById("f_pinned").checked = false;
+      document.getElementById("submitBtn").textContent = "등록";
+      document.getElementById("writeForm").classList.add("hidden");
+      if (isVisor(profileRef)) document.getElementById("writeBtn").classList.remove("hidden");
+    }
+
+    function startEdit(n) {
+      editingId = n.id;
+      document.getElementById("f_title").value = n.title;
+      document.getElementById("f_content").value = n.content;
+      document.getElementById("f_category").value = n.category;
+      document.getElementById("f_pinned").checked = !!n.is_pinned;
+      document.getElementById("submitBtn").textContent = "수정 저장";
+      document.getElementById("writeForm").classList.remove("hidden");
+      document.getElementById("writeBtn").classList.add("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderNotices() {
+      const listEl = document.getElementById("noticeList");
+      if (!allNotices.length) {
+        listEl.innerHTML = '<div class="empty-state">등록된 공지사항이 없습니다</div>';
+        return;
+      }
+      listEl.innerHTML = allNotices.map((n) => `
+        <div class="card notice-item">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            ${n.is_pinned ? '<span class="pill pill-amber-solid">필독</span>' : isWithinDays(n.created_at, 7) ? '<span class="pill pill-secondary">NEW</span>' : ""}
+            <span style="font-size:16px; font-weight:700; flex-grow:1;">${escapeHtml(n.title)}</span>
+            <span style="font-size:13px; color:var(--muted);">${escapeHtml(n.category)} · ${metaDateLabel(n)}</span>
+          </div>
+          <div style="margin-top:10px; font-size:14px; color:var(--ink-soft); line-height:1.6; white-space:pre-line;">${escapeHtml(n.content)}</div>
+          ${isVisor(profileRef) ? `
+            <div class="row-actions" style="margin-top:12px;">
+              <button class="btn-edit" data-id="${n.id}" data-action="edit">수정</button>
+              <button class="btn-delete" data-id="${n.id}" data-action="delete">삭제</button>
+            </div>
+          ` : ""}
+        </div>
+      `).join("");
+
+      listEl.querySelectorAll("[data-action='edit']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const n = allNotices.find((x) => x.id === btn.dataset.id);
+          if (n) startEdit(n);
+        });
+      });
+      listEl.querySelectorAll("[data-action='delete']").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("이 공지사항을 삭제할까요? 삭제하면 되돌릴 수 없습니다.")) return;
+          const { error } = await sb.from("notices").delete().eq("id", btn.dataset.id);
+          if (error) {
+            alert("삭제에 실패했습니다: " + error.message);
+            return;
+          }
+          loadNotices();
+        });
+      });
+    }
 
     async function loadNotices() {
       const { data, error } = await sb.from("notices").select("*").order("is_pinned", { ascending: false }).order("created_at", { ascending: false });
@@ -63,20 +130,8 @@
         listEl.innerHTML = `<div class="empty-state">공지사항을 불러오지 못했습니다: ${escapeHtml(error.message)}</div>`;
         return;
       }
-      if (!data || data.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">등록된 공지사항이 없습니다</div>';
-        return;
-      }
-      listEl.innerHTML = data.map((n) => `
-        <div class="card notice-item">
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            ${n.is_pinned ? '<span class="pill pill-amber-solid">필독</span>' : isWithinDays(n.created_at, 7) ? '<span class="pill pill-secondary">NEW</span>' : ""}
-            <span style="font-size:16px; font-weight:700; flex-grow:1;">${escapeHtml(n.title)}</span>
-            <span style="font-size:13px; color:var(--muted);">${escapeHtml(n.category)} · ${formatDate(n.created_at)}</span>
-          </div>
-          <div style="margin-top:10px; font-size:14px; color:var(--ink-soft); line-height:1.6; white-space:pre-line;">${escapeHtml(n.content)}</div>
-        </div>
-      `).join("");
+      allNotices = data || [];
+      renderNotices();
     }
 
     (async () => {
@@ -95,8 +150,7 @@
         document.getElementById("writeBtn").classList.add("hidden");
       });
       document.getElementById("cancelBtn").addEventListener("click", () => {
-        document.getElementById("writeForm").classList.add("hidden");
-        document.getElementById("writeBtn").classList.remove("hidden");
+        resetForm();
       });
 
       document.getElementById("submitBtn").addEventListener("click", async () => {
@@ -112,20 +166,17 @@
           return;
         }
 
-        const { error } = await sb.from("notices").insert({
-          title, content, category, is_pinned: isPinned, author_id: profileRef.id,
-        });
+        const payload = { title, content, category, is_pinned: isPinned };
+        const { error } = editingId
+          ? await sb.from("notices").update(payload).eq("id", editingId)
+          : await sb.from("notices").insert({ ...payload, author_id: profileRef.id });
 
         if (error) {
-          showFormError(errEl, "등록에 실패했습니다: " + error.message);
+          showFormError(errEl, "저장에 실패했습니다: " + error.message);
           return;
         }
 
-        document.getElementById("f_title").value = "";
-        document.getElementById("f_content").value = "";
-        document.getElementById("f_pinned").checked = false;
-        document.getElementById("writeForm").classList.add("hidden");
-        document.getElementById("writeBtn").classList.remove("hidden");
+        resetForm();
         loadNotices();
       });
 
