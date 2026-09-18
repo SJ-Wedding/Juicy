@@ -1,6 +1,8 @@
 -- ============================================================
--- JUICY 파트너 게시판 - Supabase 스키마
+-- GOMANGO 파트너 게시판 - Supabase 스키마
 -- Supabase 대시보드 > SQL Editor 에 전체를 붙여넣고 실행하세요.
+-- 이미 한 번 실행한 적이 있는 DB에 다시 실행해도 안전합니다(정책/트리거를 먼저
+-- 지우고 다시 만드는 방식이라, "already exists" 오류 없이 재실행할 수 있습니다).
 -- ============================================================
 
 -- 1) 점주/바이저 프로필 테이블
@@ -25,9 +27,11 @@ as $$
   );
 $$;
 
+drop policy if exists "profiles_select" on public.profiles;
 create policy "profiles_select" on public.profiles
   for select using (auth.uid() = id or public.is_visor());
 
+drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own" on public.profiles
   for update using (auth.uid() = id);
 
@@ -69,9 +73,11 @@ create table if not exists public.notices (
 
 alter table public.notices enable row level security;
 
+drop policy if exists "notices_select_authenticated" on public.notices;
 create policy "notices_select_authenticated" on public.notices
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "notices_write_visor" on public.notices;
 create policy "notices_write_visor" on public.notices
   for all using (public.is_visor()) with check (public.is_visor());
 
@@ -92,9 +98,11 @@ create table if not exists public.recipes (
 
 alter table public.recipes enable row level security;
 
+drop policy if exists "recipes_select_authenticated" on public.recipes;
 create policy "recipes_select_authenticated" on public.recipes
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "recipes_write_visor" on public.recipes;
 create policy "recipes_write_visor" on public.recipes
   for all using (public.is_visor()) with check (public.is_visor());
 
@@ -110,9 +118,11 @@ create table if not exists public.faqs (
 
 alter table public.faqs enable row level security;
 
+drop policy if exists "faqs_select_authenticated" on public.faqs;
 create policy "faqs_select_authenticated" on public.faqs
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "faqs_write_visor" on public.faqs;
 create policy "faqs_write_visor" on public.faqs
   for all using (public.is_visor()) with check (public.is_visor());
 
@@ -131,14 +141,17 @@ create table if not exists public.suggestions (
 alter table public.suggestions enable row level security;
 
 -- 본인 글이거나, 바이저는 전체 조회 가능
+drop policy if exists "suggestions_select" on public.suggestions;
 create policy "suggestions_select" on public.suggestions
   for select using (owner_id = auth.uid() or public.is_visor());
 
 -- 로그인한 점주 본인 명의로만 작성 가능
+drop policy if exists "suggestions_insert" on public.suggestions;
 create policy "suggestions_insert" on public.suggestions
   for insert with check (owner_id = auth.uid());
 
 -- 상태 변경(답변완료 처리)은 바이저만
+drop policy if exists "suggestions_update_visor" on public.suggestions;
 create policy "suggestions_update_visor" on public.suggestions
   for update using (public.is_visor());
 
@@ -154,6 +167,7 @@ create table if not exists public.suggestion_replies (
 
 alter table public.suggestion_replies enable row level security;
 
+drop policy if exists "replies_select" on public.suggestion_replies;
 create policy "replies_select" on public.suggestion_replies
   for select using (
     exists (
@@ -162,6 +176,7 @@ create policy "replies_select" on public.suggestion_replies
     )
   );
 
+drop policy if exists "replies_insert_visor" on public.suggestion_replies;
 create policy "replies_insert_visor" on public.suggestion_replies
   for insert with check (public.is_visor());
 
@@ -178,9 +193,11 @@ create table if not exists public.resources (
 
 alter table public.resources enable row level security;
 
+drop policy if exists "resources_select_authenticated" on public.resources;
 create policy "resources_select_authenticated" on public.resources
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "resources_write_visor" on public.resources;
 create policy "resources_write_visor" on public.resources
   for all using (public.is_visor()) with check (public.is_visor());
 
@@ -200,9 +217,11 @@ create table if not exists public.companies (
 
 alter table public.companies enable row level security;
 
+drop policy if exists "companies_select_authenticated" on public.companies;
 create policy "companies_select_authenticated" on public.companies
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "companies_write_visor" on public.companies;
 create policy "companies_write_visor" on public.companies
   for all using (public.is_visor()) with check (public.is_visor());
 
@@ -221,12 +240,15 @@ create table if not exists public.supply_requests (
 alter table public.supply_requests enable row level security;
 
 -- 건의사항과 동일한 원칙: 본인 글이거나 바이저는 전체 조회
+drop policy if exists "supply_requests_select" on public.supply_requests;
 create policy "supply_requests_select" on public.supply_requests
   for select using (owner_id = auth.uid() or public.is_visor());
 
+drop policy if exists "supply_requests_insert" on public.supply_requests;
 create policy "supply_requests_insert" on public.supply_requests
   for insert with check (owner_id = auth.uid());
 
+drop policy if exists "supply_requests_update_visor" on public.supply_requests;
 create policy "supply_requests_update_visor" on public.supply_requests
   for update using (public.is_visor());
 
@@ -240,6 +262,7 @@ create table if not exists public.supply_request_comments (
 
 alter table public.supply_request_comments enable row level security;
 
+drop policy if exists "supply_request_comments_select" on public.supply_request_comments;
 create policy "supply_request_comments_select" on public.supply_request_comments
   for select using (
     exists (
@@ -248,6 +271,7 @@ create policy "supply_request_comments_select" on public.supply_request_comments
     )
   );
 
+drop policy if exists "supply_request_comments_insert_visor" on public.supply_request_comments;
 create policy "supply_request_comments_insert_visor" on public.supply_request_comments
   for insert with check (public.is_visor());
 
@@ -273,6 +297,158 @@ grant select, insert, update, delete on
   public.supply_requests,
   public.supply_request_comments
 to authenticated;
+
+
+-- ============================================================
+-- 11) 게시글 수정/삭제 지원 (수정일시 컬럼 + 자동 갱신 트리거 + 추가 권한 정책)
+-- 이미 예전 버전의 schema.sql을 실행해서 DB가 구축되어 있다면, 이 11번 블록만
+-- SQL Editor에서 새로 실행해도 동일하게 적용됩니다 (sql/02_edit_delete_migration.sql 참고).
+-- ============================================================
+
+-- 수정일시(updated_at) 컬럼 추가 (이미 있으면 건너뜀)
+alter table public.notices add column if not exists updated_at timestamptz not null default now();
+alter table public.recipes add column if not exists updated_at timestamptz not null default now();
+alter table public.resources add column if not exists updated_at timestamptz not null default now();
+alter table public.companies add column if not exists updated_at timestamptz not null default now();
+alter table public.suggestions add column if not exists updated_at timestamptz not null default now();
+alter table public.supply_requests add column if not exists updated_at timestamptz not null default now();
+
+-- UPDATE 될 때마다 updated_at을 현재 시각으로 자동 갱신해주는 함수/트리거
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists set_updated_at on public.notices;
+create trigger set_updated_at before update on public.notices for each row execute procedure public.set_updated_at();
+
+drop trigger if exists set_updated_at on public.recipes;
+create trigger set_updated_at before update on public.recipes for each row execute procedure public.set_updated_at();
+
+drop trigger if exists set_updated_at on public.resources;
+create trigger set_updated_at before update on public.resources for each row execute procedure public.set_updated_at();
+
+drop trigger if exists set_updated_at on public.companies;
+create trigger set_updated_at before update on public.companies for each row execute procedure public.set_updated_at();
+
+drop trigger if exists set_updated_at on public.suggestions;
+create trigger set_updated_at before update on public.suggestions for each row execute procedure public.set_updated_at();
+
+drop trigger if exists set_updated_at on public.supply_requests;
+create trigger set_updated_at before update on public.supply_requests for each row execute procedure public.set_updated_at();
+
+-- 건의사항: 작성자 본인도 자신의 글을 "수정"할 수 있도록 허용 (삭제는 여전히 바이저만 가능)
+drop policy if exists "suggestions_update_own" on public.suggestions;
+create policy "suggestions_update_own" on public.suggestions
+  for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+drop policy if exists "suggestions_delete_visor" on public.suggestions;
+create policy "suggestions_delete_visor" on public.suggestions
+  for delete using (public.is_visor());
+
+-- 본사 발주: 작성자 본인도 자신의 요청을 "수정"할 수 있도록 허용 (삭제는 여전히 바이저만 가능)
+drop policy if exists "supply_requests_update_own" on public.supply_requests;
+create policy "supply_requests_update_own" on public.supply_requests
+  for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+drop policy if exists "supply_requests_delete_visor" on public.supply_requests;
+create policy "supply_requests_delete_visor" on public.supply_requests
+  for delete using (public.is_visor());
+
+-- 참고: 공지사항/레시피/자료실/업체정보는 원래 "..._write_visor" (for all) 정책이 있어서
+-- 바이저의 수정·삭제 권한이 이미 포함되어 있습니다. 이 테이블들은 점주가 작성하지 않으므로
+-- 별도의 "본인 수정" 정책이 필요 없습니다.
+
+
+-- ============================================================
+-- 12) 건의함 구분 / 발주 물품 가격·송금상태 (sql/03_gomango_update.sql과 내용 동일)
+-- ============================================================
+
+-- 건의함: 구분(문의사항/건의사항/메뉴 의견) 컬럼 추가
+alter table public.suggestions add column if not exists category text not null default '건의사항';
+alter table public.suggestions drop constraint if exists suggestions_category_check;
+alter table public.suggestions add constraint suggestions_category_check check (category in ('문의사항', '건의사항', '메뉴 의견'));
+
+-- 본사 발주: 송금 상태 컬럼 추가 (기본값 "미완료")
+alter table public.supply_requests add column if not exists payment_status text not null default '미완료';
+alter table public.supply_requests drop constraint if exists supply_requests_payment_status_check;
+alter table public.supply_requests add constraint supply_requests_payment_status_check check (payment_status in ('미완료', '완료'));
+
+-- 발주 품목별 단가 테이블 (로그인한 사람 누구나 조회, 작성/수정/삭제는 바이저만)
+create table if not exists public.order_item_prices (
+  item_name text primary key,
+  unit_price numeric not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.order_item_prices enable row level security;
+
+drop policy if exists "order_item_prices_select_authenticated" on public.order_item_prices;
+create policy "order_item_prices_select_authenticated" on public.order_item_prices
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists "order_item_prices_write_visor" on public.order_item_prices;
+create policy "order_item_prices_write_visor" on public.order_item_prices
+  for all using (public.is_visor()) with check (public.is_visor());
+
+drop trigger if exists set_updated_at on public.order_item_prices;
+create trigger set_updated_at before update on public.order_item_prices for each row execute procedure public.set_updated_at();
+
+grant select, insert, update, delete on public.order_item_prices to authenticated;
+
+insert into public.order_item_prices (item_name, unit_price) values
+  ('배망 (2000EA/BOX)', 0),
+  ('반팔티셔츠', 0),
+  ('앞치마 (검정/FREE)', 0),
+  ('스냅백 (노랑/FREE)', 0),
+  ('맨투맨', 0),
+  ('무지 1구 비닐캐리어 (200EA/PK)', 0),
+  ('무지 2구 비닐캐리어 (200EA/PK)', 0)
+on conflict (item_name) do nothing;
+
+
+-- ============================================================
+-- 13) 본사 발주: 여러 물품을 한 번에 요청해도 발주 목록에 한 건으로 묶어서 보이도록
+--     items(jsonb 배열) 컬럼을 추가합니다. item_name은 예전 방식(단일 물품) 데이터 호환을
+--     위해 남겨두되, 더 이상 필수 입력이 아니므로 NOT NULL 제약을 해제합니다.
+-- ============================================================
+alter table public.supply_requests add column if not exists items jsonb;
+alter table public.supply_requests alter column item_name drop not null;
+
+
+-- ============================================================
+-- 14) 계정관리(accounts.html) 기능: 계정 생성/수정/삭제를 대신 처리하는
+--     Edge Function(admin-users)이 service_role 권한으로 profiles 등 테이블에
+--     접근할 수 있도록 GRANT를 부여합니다. (sql/05_service_role_grant.sql과 동일)
+--     service_role은 RLS는 자동으로 우회하지만, 테이블 자체의 GRANT 권한은
+--     RLS와 별개로 필요합니다 (없으면 "permission denied for table ..." 오류).
+-- ============================================================
+grant usage on schema public to service_role;
+
+grant select, insert, update, delete on
+  public.profiles,
+  public.notices,
+  public.recipes,
+  public.faqs,
+  public.suggestions,
+  public.suggestion_replies,
+  public.resources,
+  public.companies,
+  public.supply_requests,
+  public.supply_request_comments,
+  public.order_item_prices
+to service_role;
+
+
+-- ============================================================
+-- 15) 공지사항 이미지 첨부(구글 드라이브 링크) 기능 (sql/06_notices_image.sql과 동일)
+-- ============================================================
+alter table public.notices add column if not exists image_url text;
 
 
 -- ============================================================

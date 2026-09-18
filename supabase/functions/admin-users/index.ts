@@ -46,13 +46,23 @@ Deno.serve(async (req) => {
     const callerId = userData.user.id;
 
     // 호출한 사람이 바이저인지 확인 (바이저가 아니면 어떤 동작도 허용하지 않습니다)
-    const { data: callerProfile } = await admin
+    const { data: callerProfile, error: callerErr } = await admin
       .from("profiles")
       .select("role")
       .eq("id", callerId)
-      .single();
-    if (!callerProfile || callerProfile.role !== "visor") {
-      return json({ error: "바이저 권한이 필요합니다." }, 403);
+      .maybeSingle();
+
+    if (callerErr) {
+      console.error("caller profile 조회 실패:", callerErr.message, "callerId:", callerId);
+      return json({ error: "권한 확인 중 오류가 발생했습니다: " + callerErr.message }, 500);
+    }
+    if (!callerProfile) {
+      console.error("caller profile 행이 없습니다. callerId:", callerId);
+      return json({ error: `계정 정보(profiles)를 찾을 수 없습니다. (id: ${callerId})` }, 403);
+    }
+    if (callerProfile.role !== "visor") {
+      console.error("바이저가 아닌 계정의 호출. callerId:", callerId, "role:", callerProfile.role);
+      return json({ error: `바이저 권한이 필요합니다. (현재 권한: ${callerProfile.role})` }, 403);
     }
 
     const body = await req.json().catch(() => ({}));
