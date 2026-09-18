@@ -212,6 +212,35 @@ function getYoutubeThumbUrl(url) {
   return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
 }
 
+// 구글 드라이브 공유 링크(file/d/... 또는 open?id=... 형태)에서 파일 ID를 추출합니다.
+// (공지사항 이미지 첨부에 사용 — 파일 공유 설정이 "링크가 있는 모든 사용자"로 되어 있어야 썸네일이 보입니다)
+function getGoogleDriveId(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host !== "drive.google.com" && host !== "docs.google.com") return null;
+    const fileMatch = u.pathname.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) return fileMatch[1];
+    if (u.searchParams.get("id")) return u.searchParams.get("id");
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+// 구글 드라이브 링크면 썸네일 이미지 URL을, 아니면 null을 반환합니다.
+function getGoogleDriveThumbUrl(url) {
+  const id = getGoogleDriveId(url);
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1000` : null;
+}
+
+// 구글 드라이브 링크면 보기/다운로드 화면으로 이동하는 표준 링크를, 아니면 원래 입력값을 그대로 반환합니다.
+function getGoogleDriveViewUrl(url) {
+  const id = getGoogleDriveId(url);
+  return id ? `https://drive.google.com/file/d/${id}/view` : url;
+}
+
 // 전화번호 문자열에서 하이픈/공백을 제거해 tel: 링크에 쓸 수 있게 만듭니다.
 function toTelHref(phone) {
   if (!phone) return "";
