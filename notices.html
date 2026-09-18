@@ -40,6 +40,11 @@
         <label>내용</label>
         <textarea id="f_content" placeholder="공지 내용을 입력하세요"></textarea>
       </div>
+      <div class="form-field">
+        <label>이미지 링크 (구글 드라이브, 선택)</label>
+        <input id="f_image_url" type="url" placeholder="https://drive.google.com/file/d/...">
+        <p style="font-size:12px; color:var(--muted); margin:4px 0 0;">구글 드라이브 공유 설정을 "링크가 있는 모든 사용자"로 해두셔야 썸네일이 보입니다.</p>
+      </div>
       <label class="checkbox-row"><input type="checkbox" id="f_pinned"> 필독 공지로 상단에 고정</label>
       <div id="formError" class="error-text hidden"></div>
       <div style="display:flex; gap:10px;">
@@ -62,6 +67,7 @@
       editingId = null;
       document.getElementById("f_title").value = "";
       document.getElementById("f_content").value = "";
+      document.getElementById("f_image_url").value = "";
       document.getElementById("f_category").value = "일반";
       document.getElementById("f_pinned").checked = false;
       document.getElementById("submitBtn").textContent = "등록";
@@ -74,6 +80,7 @@
       editingId = n.id;
       document.getElementById("f_title").value = n.title;
       document.getElementById("f_content").value = n.content;
+      document.getElementById("f_image_url").value = n.image_url || "";
       document.getElementById("f_category").value = n.category;
       document.getElementById("f_pinned").checked = !!n.is_pinned;
       document.getElementById("submitBtn").textContent = "수정 저장";
@@ -96,6 +103,15 @@
             <span style="font-size:13px; color:var(--muted);">${escapeHtml(n.category)} · ${metaDateLabel(n)}</span>
           </div>
           <div style="margin-top:10px; font-size:14px; color:var(--ink-soft); line-height:1.6; white-space:pre-line;">${escapeHtml(n.content)}</div>
+          ${n.image_url ? `
+            <div style="margin-top:10px;">
+              <a href="${escapeHtml(getGoogleDriveViewUrl(n.image_url))}" target="_blank" rel="noopener" style="display:inline-block;">
+                ${getGoogleDriveThumbUrl(n.image_url)
+                  ? `<img src="${escapeHtml(getGoogleDriveThumbUrl(n.image_url))}" alt="첨부 이미지" loading="lazy" style="max-width:280px; max-height:200px; border-radius:10px; border:1px solid var(--border); display:block;">`
+                  : `<span style="font-size:13px; color:var(--accent-dark);">🖼 첨부 이미지 보기 ›</span>`}
+              </a>
+            </div>
+          ` : ""}
           ${isVisor(profileRef) ? `
             <div class="row-actions" style="margin-top:12px;">
               <button class="btn-edit" data-id="${n.id}" data-action="edit">수정</button>
@@ -160,6 +176,7 @@
         clearFormError(errEl);
         const title = document.getElementById("f_title").value.trim();
         const content = document.getElementById("f_content").value.trim();
+        const imageUrl = document.getElementById("f_image_url").value.trim();
         const category = document.getElementById("f_category").value;
         const isPinned = document.getElementById("f_pinned").checked;
 
@@ -168,7 +185,7 @@
           return;
         }
 
-        const payload = { title, content, category, is_pinned: isPinned };
+        const payload = { title, content, category, is_pinned: isPinned, image_url: imageUrl || null };
         const { error } = editingId
           ? await sb.from("notices").update(payload).eq("id", editingId)
           : await sb.from("notices").insert({ ...payload, author_id: profileRef.id });
