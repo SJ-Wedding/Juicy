@@ -11,6 +11,7 @@ const GNB_ITEMS = [
   { key: "orders", href: "orders", label: "본사 발주" },
   { key: "resources", href: "resources", label: "자료실" },
   { key: "company", href: "company", label: "업체 정보" },
+  { key: "accounts", href: "accounts", label: "계정관리", visorOnly: true },
 ];
 
 // 페이지는 기본적으로 style.css에 의해 숨겨져 있습니다 (html:not(.js-ready) body{visibility:hidden}).
@@ -47,7 +48,8 @@ function renderGnb(activeKey, profile) {
   const gnbEl = document.getElementById("gnb");
   if (!gnbEl) return;
 
-  const linksHtml = GNB_ITEMS.map(
+  const visibleItems = GNB_ITEMS.filter((item) => !item.visorOnly || isVisor(profile));
+  const linksHtml = visibleItems.map(
     (item) => `
       <a href="${item.href}" class="gnb-link ${item.key === activeKey ? "active" : ""}">${item.label}</a>
     `
