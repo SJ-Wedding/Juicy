@@ -52,6 +52,7 @@
       document.getElementById("faq_a").value = "";
       document.getElementById("faqSubmitBtn").textContent = "등록";
       document.getElementById("faqAddForm").classList.add("hidden");
+      if (document.activeElement) document.activeElement.blur();
     }
 
     function startFaqEdit(f) {
@@ -126,6 +127,7 @@
       document.getElementById("faqAddBtn").addEventListener("click", () => {
         resetFaqForm();
         document.getElementById("faqAddForm").classList.remove("hidden");
+        document.getElementById("faqAddForm").scrollIntoView({ behavior: "smooth", block: "start" });
       });
       document.getElementById("faqCancelBtn").addEventListener("click", () => {
         resetFaqForm();
