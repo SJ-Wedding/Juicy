@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>건의함 · FAQ - GOMANGO 파트너 게시판</title>
+<title>건의함 - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260917d">
+<link rel="stylesheet" href="assets/style.css?v=20260918a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -14,10 +14,36 @@
   <main class="page-main">
     <div class="page-header">
       <div>
-        <h1 class="page-title">건의함 · FAQ</h1>
-        <p class="page-subtitle">불편사항이나 아이디어를 자유롭게 남겨주세요. 자주 묻는 질문은 아래에서 먼저 확인해보세요.</p>
+        <h1 class="page-title">건의함</h1>
+        <p class="page-subtitle">불편사항이나 아이디어를 자유롭게 남겨주세요</p>
       </div>
       <button id="writeBtn" class="btn-primary">+ 건의사항 작성</button>
+    </div>
+
+    <!-- 건의함 게시판 이용 안내 -->
+    <div class="card" style="background:var(--neutral-tint);">
+      <div style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" id="noticeToggleBtn">
+        <span style="font-size:15px; font-weight:700; color:var(--ink);">📌 건의함 게시판 이용 안내</span>
+        <span id="noticeToggleIcon" style="font-size:13px; color:var(--muted); flex-shrink:0;">접기 ▴</span>
+      </div>
+      <div id="noticeBody" style="margin-top:12px; font-size:13.5px; color:var(--ink-soft); line-height:1.75; white-space:pre-line;">원활하고 정확한 업무 처리를 위해 아래 내용을 확인하시고 이용 부탁드립니다.
+
+1. 언어 폭력 및 비속어 사용 금지
+원활한 소통을 위해 욕설, 비속어 및 언어폭력성 표현은 삼가주시기 바랍니다.
+
+2. 내용 확인을 위한 연락 안내
+요청사항 확인이 필요하거나 추가적인 내용 확인이 필요한 경우 담당자가 전화드릴 수 있습니다.
+
+3. 정확한 요청사항 작성
+문의 및 요청사항은 담당자가 정확히 확인할 수 있도록 구체적인 내용과 요청사항을 함께 작성해주시기 바랍니다.
+
+4. 사진 첨부가 필요한 경우
+사진 확인이 필요한 문의는 게시판에 사진을 직접 첨부하기 어려우므로 담당 바이저에게 문자 또는 카카오톡으로 사진을 보내주시기 바랍니다.
+
+5. 물류 관련 문의 및 반품 접수
+물류 관련 문의 및 반품 접수는 물류사 1600-6400으로 직접 요청해주시기 바랍니다.
+
+매장과 본사 간 원활하고 신속한 소통을 위해 위 내용을 준수하여 게시판을 이용해주시기 바랍니다.</div>
     </div>
 
     <div id="writeForm" class="form-card hidden">
@@ -44,27 +70,6 @@
       </div>
     </div>
 
-    <!-- FAQ 아코디언 -->
-    <div class="card faq-box">
-      <div class="faq-header">
-        <button id="faqToggleBtn" class="faq-toggle-btn">
-          <span style="font-size:15px; font-weight:700; color:var(--ink);">자주 묻는 질문</span>
-          <span id="faqToggleIcon">펼치기 ▾</span>
-        </button>
-        <button id="faqAddBtn" class="btn-link hidden">+ FAQ 추가</button>
-      </div>
-      <div id="faqAddForm" class="form-card hidden" style="margin-bottom:12px;">
-        <div class="form-field"><label>질문</label><input id="faq_q" type="text"></div>
-        <div class="form-field"><label>답변</label><textarea id="faq_a"></textarea></div>
-        <div id="faqFormError" class="error-text hidden"></div>
-        <div style="display:flex; gap:10px;">
-          <button id="faqSubmitBtn" class="btn-primary">등록</button>
-          <button id="faqCancelBtn" class="btn-link">취소</button>
-        </div>
-      </div>
-      <div id="faqList" class="hidden"><div class="empty-state">불러오는 중...</div></div>
-    </div>
-
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
       <div style="display:flex; align-items:center; gap:8px;" id="statusTabs"></div>
     </div>
@@ -72,92 +77,14 @@
     <div id="suggestionList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
   </main>
 
-  <script src="assets/supabaseClient.js?v=20260917d"></script>
-  <script src="assets/app.js?v=20260917d"></script>
+  <script src="assets/supabaseClient.js?v=20260918a"></script>
+  <script src="assets/app.js?v=20260918a"></script>
   <script>
     let profileRef = null;
     let allSuggestions = [];
     let currentStatus = "전체";
     let editingId = null;
-    let allFaqs = [];
-    let faqEditingId = null;
 
-    // ---------- FAQ ----------
-    function startFaqEdit(f) {
-      faqEditingId = f.id;
-      document.getElementById("faq_q").value = f.question;
-      document.getElementById("faq_a").value = f.answer;
-      document.getElementById("faqSubmitBtn").textContent = "수정 저장";
-      document.getElementById("faqAddForm").classList.remove("hidden");
-    }
-
-    function resetFaqForm() {
-      faqEditingId = null;
-      document.getElementById("faq_q").value = "";
-      document.getElementById("faq_a").value = "";
-      document.getElementById("faqSubmitBtn").textContent = "등록";
-      document.getElementById("faqAddForm").classList.add("hidden");
-    }
-
-    function renderFaqs() {
-      const el = document.getElementById("faqList");
-      if (!allFaqs.length) {
-        el.innerHTML = '<div class="empty-state">등록된 FAQ가 없습니다</div>';
-        return;
-      }
-      el.innerHTML = allFaqs.map((f, idx) => `
-        <div class="faq-item" data-idx="${idx}">
-          <div class="faq-q">
-            <span>${escapeHtml(f.question)}</span>
-            <span class="faq-chevron">▾</span>
-          </div>
-          <div class="faq-a">
-            <div>${escapeHtml(f.answer)}</div>
-            ${isVisor(profileRef) ? `
-              <div class="row-actions" style="margin-top:10px;">
-                <button class="btn-edit" data-id="${f.id}" data-action="faq-edit">수정</button>
-                <button class="btn-delete" data-id="${f.id}" data-action="faq-delete">삭제</button>
-              </div>
-            ` : ""}
-          </div>
-        </div>
-      `).join("");
-      el.querySelectorAll(".faq-item").forEach((item) => {
-        item.querySelector(".faq-q").addEventListener("click", () => {
-          item.classList.toggle("open");
-        });
-      });
-      el.querySelectorAll("[data-action='faq-edit']").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const f = allFaqs.find((x) => x.id === btn.dataset.id);
-          if (f) startFaqEdit(f);
-        });
-      });
-      el.querySelectorAll("[data-action='faq-delete']").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          if (!confirm("이 FAQ를 삭제할까요? 삭제하면 되돌릴 수 없습니다.")) return;
-          const { error } = await sb.from("faqs").delete().eq("id", btn.dataset.id);
-          if (error) {
-            alert("삭제에 실패했습니다: " + error.message);
-            return;
-          }
-          loadFaqs();
-        });
-      });
-    }
-
-    async function loadFaqs() {
-      const { data, error } = await sb.from("faqs").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: true });
-      const el = document.getElementById("faqList");
-      if (error) {
-        el.innerHTML = `<div class="empty-state">FAQ를 불러오지 못했습니다</div>`;
-        return;
-      }
-      allFaqs = data || [];
-      renderFaqs();
-    }
-
-    // ---------- Suggestions ----------
     function renderStatusTabs() {
       const statuses = ["전체", "답변대기", "답변완료"];
       document.getElementById("statusTabs").innerHTML = statuses.map((s) => {
@@ -295,15 +222,11 @@
       renderGnb("suggestions", profileRef);
       revealPage();
 
-      if (isVisor(profileRef)) {
-        document.getElementById("faqAddBtn").classList.remove("hidden");
-      }
-
-      // FAQ 펼치기/접기
-      document.getElementById("faqToggleBtn").addEventListener("click", () => {
-        const listEl = document.getElementById("faqList");
-        const iconEl = document.getElementById("faqToggleIcon");
-        const nowHidden = listEl.classList.toggle("hidden");
+      // 이용 안내 펼치기/접기
+      document.getElementById("noticeToggleBtn").addEventListener("click", () => {
+        const bodyEl = document.getElementById("noticeBody");
+        const iconEl = document.getElementById("noticeToggleIcon");
+        const nowHidden = bodyEl.classList.toggle("hidden");
         iconEl.textContent = nowHidden ? "펼치기 ▾" : "접기 ▴";
       });
 
@@ -345,38 +268,6 @@
         loadSuggestions();
       });
 
-      // FAQ 추가 폼 (바이저 전용)
-      document.getElementById("faqAddBtn").addEventListener("click", () => {
-        faqEditingId = null;
-        document.getElementById("faq_q").value = "";
-        document.getElementById("faq_a").value = "";
-        document.getElementById("faqSubmitBtn").textContent = "등록";
-        document.getElementById("faqAddForm").classList.remove("hidden");
-      });
-      document.getElementById("faqCancelBtn").addEventListener("click", () => {
-        resetFaqForm();
-      });
-      document.getElementById("faqSubmitBtn").addEventListener("click", async () => {
-        const errEl = document.getElementById("faqFormError");
-        clearFormError(errEl);
-        const question = document.getElementById("faq_q").value.trim();
-        const answer = document.getElementById("faq_a").value.trim();
-        if (!question || !answer) {
-          showFormError(errEl, "질문과 답변을 모두 입력해주세요.");
-          return;
-        }
-        const { error } = faqEditingId
-          ? await sb.from("faqs").update({ question, answer }).eq("id", faqEditingId)
-          : await sb.from("faqs").insert({ question, answer });
-        if (error) {
-          showFormError(errEl, "저장에 실패했습니다: " + error.message);
-          return;
-        }
-        resetFaqForm();
-        loadFaqs();
-      });
-
-      loadFaqs();
       loadSuggestions();
     })();
   </script>
