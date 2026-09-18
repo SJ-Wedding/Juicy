@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260917d">
+<link rel="stylesheet" href="assets/style.css?v=20260918a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -39,8 +39,8 @@
     </div>
   </main>
 
-  <script src="assets/supabaseClient.js?v=20260917d"></script>
-  <script src="assets/app.js?v=20260917d"></script>
+  <script src="assets/supabaseClient.js?v=20260918a"></script>
+  <script src="assets/app.js?v=20260918a"></script>
   <script>
     (async () => {
       const auth = await requireAuth();
@@ -85,8 +85,8 @@
         </a>
         <a href="suggestions.html" class="card quick-card">
           <div class="quick-icon" style="background:var(--secondary-tint); color:var(--secondary-dark);">💬</div>
-          <div class="quick-title">건의함 · FAQ</div>
-          <div class="quick-desc">불편사항·아이디어를 남기고 답변을 받아보세요. 자주 묻는 질문도 함께 모아뒀어요</div>
+          <div class="quick-title">건의함</div>
+          <div class="quick-desc">불편사항·아이디어를 남기고 답변을 받아보세요</div>
           <div class="quick-footer"><span class="pill pill-secondary">답변대기 ${suggestionPendingCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
         <a href="orders.html" class="card quick-card">
@@ -108,25 +108,18 @@
           <div class="quick-footer"><span class="pill pill-neutral">${companyCount || 0}곳</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
 
-        <!-- ============================================================
-             ↓↓↓ 8번 요청: 빠른 메뉴에 추가한 임시(placeholder) 카드 2개입니다.
-             href="#" 부분을 원하는 실제 URL로, 제목/설명 텍스트도 원하는 내용으로 바꿔주세요.
-             (아이콘 배경/글자색은 --accent-tint/--accent 같은 기존 CSS 변수를 그대로 써도 되고,
-              style.css :root 에 정의된 다른 색상 변수로 바꿔도 됩니다)
-             ============================================================ -->
-        <a href="#" class="card quick-card">
-          <div class="quick-icon" style="background:var(--accent-tint); color:var(--accent);">🔗</div>
-          <div class="quick-title">빠른 메뉴 1 (수정 필요)</div>
-          <div class="quick-desc">여기에 설명 문구를 입력하고, 카드의 href="#" 를 원하는 링크 주소로 바꿔주세요.</div>
+        <a href="https://www.kinkos.co.kr/" target="_blank" rel="noopener" class="card quick-card">
+          <div class="quick-icon-logo"><img src="assets/logo.png?v=20260918" alt="GOMANGO"></div>
+          <div class="quick-title">포스터 및 배너 발주</div>
+          <div class="quick-desc">매장 포스터·배너 제작을 킨코스 사이트에서 바로 발주하세요</div>
           <div class="quick-footer"><span></span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
-        <a href="#" class="card quick-card">
-          <div class="quick-icon" style="background:var(--secondary-tint); color:var(--secondary-dark);">🔗</div>
-          <div class="quick-title">빠른 메뉴 2 (수정 필요)</div>
-          <div class="quick-desc">여기에 설명 문구를 입력하고, 카드의 href="#" 를 원하는 링크 주소로 바꿔주세요.</div>
+        <a href="https://www.oesikup.com/" target="_blank" rel="noopener" class="card quick-card">
+          <div class="quick-icon-logo"><img src="assets/logo.png?v=20260918" alt="GOMANGO"></div>
+          <div class="quick-title">물류 발주</div>
+          <div class="quick-desc">매장 운영에 필요한 물류를 발주 사이트에서 신청하세요</div>
           <div class="quick-footer"><span></span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
-        <!-- ↑↑↑ 여기까지 8번 placeholder 카드 -->
       `;
 
       // 필독 배너 (필독 공지가 여러 건이면 7초 간격으로 자동으로 다음 공지를 보여주고, 우측 하단 </> 버튼으로 직접 넘길 수도 있습니다)
