@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260917d">
+<link rel="stylesheet" href="assets/style.css?v=20260918a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -51,8 +51,8 @@
     <div id="noticeList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
   </main>
 
-  <script src="assets/supabaseClient.js?v=20260917d"></script>
-  <script src="assets/app.js?v=20260917d"></script>
+  <script src="assets/supabaseClient.js?v=20260918a"></script>
+  <script src="assets/app.js?v=20260918a"></script>
   <script>
     let profileRef = null;
     let editingId = null;
@@ -67,6 +67,7 @@
       document.getElementById("submitBtn").textContent = "등록";
       document.getElementById("writeForm").classList.add("hidden");
       if (isVisor(profileRef)) document.getElementById("writeBtn").classList.remove("hidden");
+      if (document.activeElement) document.activeElement.blur();
     }
 
     function startEdit(n) {
@@ -148,6 +149,7 @@
       document.getElementById("writeBtn").addEventListener("click", () => {
         document.getElementById("writeForm").classList.remove("hidden");
         document.getElementById("writeBtn").classList.add("hidden");
+        document.getElementById("writeForm").scrollIntoView({ behavior: "smooth", block: "start" });
       });
       document.getElementById("cancelBtn").addEventListener("click", () => {
         resetForm();
