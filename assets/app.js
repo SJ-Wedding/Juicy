@@ -4,7 +4,7 @@
 
 const GNB_ITEMS = [
   { key: "home", href: "index", label: "홈" },
-  { key: "recipes", href: "recipes", label: "신메뉴 레시피" },
+  { key: "recipes", href: "recipes", label: "레시피" },
   { key: "notices", href: "notices", label: "공지사항" },
   { key: "suggestions", href: "suggestions", label: "건의함" },
   { key: "faq", href: "faq", label: "FAQ" },
@@ -61,7 +61,7 @@ function renderGnb(activeKey, profile) {
         </button>
         <a href="index" style="text-decoration:none; display:flex; align-items:center;"><img src="assets/logo.png?v=20260918" alt="GOMANGO" class="brand-logo"></a>
         <span class="gnb-divider"></span>
-        <span class="gnb-sub">파트너 게시판</span>
+        <span class="gnb-sub">점주 운영 게시판</span>
       </div>
       <nav class="gnb-nav">${linksHtml}</nav>
       <div class="gnb-right">
