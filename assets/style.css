@@ -58,18 +58,6 @@ button { font-family: inherit; }
   display: block;
 }
 
-.quick-icon-logo {
-  height: 34px;
-  width: auto;
-  display: flex;
-  align-items: center;
-}
-.quick-icon-logo img {
-  height: 100%;
-  width: auto;
-  display: block;
-}
-
 /* GNB */
 #gnb { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
 .gnb-inner {
@@ -241,8 +229,9 @@ button { font-family: inherit; }
 .faq-item.open .faq-chevron { transform: rotate(180deg); }
 
 /* Recipe grid / detail */
-.recipe-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 22px; align-items: start; }
 .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+/* 상세 내용은 선택한 카드 바로 아래에 전체 폭으로 펼쳐집니다 */
+.recipe-detail-row { grid-column: 1 / -1; }
 .recipe-card { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); cursor: pointer; background: var(--surface); }
 .recipe-card.selected { border: 2px solid var(--accent); }
 .recipe-thumb { position: relative; background: #E9E2D3; height: 130px; display: flex; align-items: center; justify-content: center; color: var(--accent); overflow: hidden; }
@@ -344,7 +333,6 @@ button { font-family: inherit; }
 .price-row input { width: 120px; text-align: right; font-family: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 
 @media (max-width: 720px) {
-  .recipe-layout { grid-template-columns: 1fr; }
   .gnb-sub { display: none; }
   .gnb-hamburger { display: flex; }
   .gnb-nav { display: none; }
@@ -363,6 +351,10 @@ button { font-family: inherit; }
 
   .form-row { flex-direction: column; }
   .form-row > * { min-width: 0; width: 100%; }
+
+  /* iOS Safari는 입력 요소 font-size가 16px보다 작으면 포커스 시 화면을 자동으로 확대합니다.
+     16px 이상으로 맞춰서 입력할 때 화면이 확대되지 않게 합니다. */
+  .form-field input, .form-field select, .form-field textarea { font-size: 16px; }
 
   /* 좁은 화면에서 제목/뱃지/날짜 등이 겹치지 않고 자연스럽게 줄바꿈되도록 */
   .notice-item, .suggestion-item, .resource-item { padding: 16px; word-break: break-word; overflow-wrap: anywhere; }
