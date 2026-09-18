@@ -25,14 +25,14 @@
       <div class="card">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
           <span style="font-size:16px; font-weight:700;">최근 공지사항</span>
-          <a href="notices.html" style="font-size:13px; color:var(--muted);">전체보기</a>
+          <a href="notices" style="font-size:13px; color:var(--muted);">전체보기</a>
         </div>
         <div id="recentNotices"><div class="empty-state">불러오는 중...</div></div>
       </div>
       <div class="card">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
           <span style="font-size:16px; font-weight:700;">최근 건의사항</span>
-          <a href="suggestions.html" style="font-size:13px; color:var(--muted);">전체보기</a>
+          <a href="suggestions" style="font-size:13px; color:var(--muted);">전체보기</a>
         </div>
         <div id="recentSuggestions"><div class="empty-state">불러오는 중...</div></div>
       </div>
@@ -71,37 +71,37 @@
       ]);
 
       document.getElementById("quickMenuGrid").innerHTML = `
-        <a href="recipes.html" class="card quick-card">
+        <a href="recipes" class="card quick-card">
           <div class="quick-icon" style="background:var(--accent-tint); color:var(--accent);">🍹</div>
           <div class="quick-title">신메뉴 &amp; 레시피</div>
           <div class="quick-desc">신메뉴/기존 메뉴 제조 방법 영상과 레시피 카드를 확인하세요</div>
           <div class="quick-footer"><span class="pill pill-accent">NEW ${newRecipeCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
-        <a href="notices.html" class="card quick-card">
+        <a href="notices" class="card quick-card">
           <div class="quick-icon" style="background:var(--amber-tint); color:var(--amber-dark);">📣</div>
           <div class="quick-title">공지사항</div>
           <div class="quick-desc">회사 소식, 정책 변경, 프로모션 안내 등 필독 공지를 확인하세요</div>
           <div class="quick-footer"><span class="pill pill-amber">필독 ${pinnedCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
-        <a href="suggestions.html" class="card quick-card">
+        <a href="suggestions" class="card quick-card">
           <div class="quick-icon" style="background:var(--secondary-tint); color:var(--secondary-dark);">💬</div>
           <div class="quick-title">건의함</div>
           <div class="quick-desc">불편사항·아이디어를 남기고 답변을 받아보세요</div>
           <div class="quick-footer"><span class="pill pill-secondary">답변대기 ${suggestionPendingCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
-        <a href="orders.html" class="card quick-card">
+        <a href="orders" class="card quick-card">
           <div class="quick-icon" style="background:var(--secondary-tint); color:var(--secondary-dark);">📦</div>
           <div class="quick-title">본사 발주</div>
           <div class="quick-desc">매장에 필요한 물품을 요청하면 담당자가 발주 확인 후 댓글로 안내드려요</div>
           <div class="quick-footer"><span class="pill pill-secondary">확인대기 ${orderPendingCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
-        <a href="resources.html" class="card quick-card">
+        <a href="resources" class="card quick-card">
           <div class="quick-icon" style="background:var(--neutral-tint); color:#6B5B47;">📁</div>
           <div class="quick-title">자료실</div>
           <div class="quick-desc">위생 체크리스트, POS 매뉴얼, 발주 서식 등 문서를 내려받으세요</div>
           <div class="quick-footer"><span class="pill pill-neutral">문서 ${resourceCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
-        <a href="company.html" class="card quick-card">
+        <a href="company" class="card quick-card">
           <div class="quick-icon" style="background:var(--neutral-tint); color:#6B5B47;">🏢</div>
           <div class="quick-title">업체 정보</div>
           <div class="quick-desc">재료·장비 공급업체, AS 센터 등 운영에 필요한 연락처를 확인하세요</div>
@@ -160,7 +160,7 @@
         ` : "";
         bannerEl.innerHTML = `
           <div class="card" style="background:var(--amber-tint); border-color:#F3D9B8; display:flex; align-items:center; gap:14px;">
-            <a href="notices.html" style="display:flex; align-items:center; gap:14px; flex-grow:1; min-width:0; text-decoration:none;">
+            <a href="notices" style="display:flex; align-items:center; gap:14px; flex-grow:1; min-width:0; text-decoration:none;">
               <span class="pill pill-amber-solid">필독</span>
               <span id="bannerText" style="font-size:15px; font-weight:500; color:var(--ink); flex-grow:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(pinnedList[0].title)}</span>
               <span id="bannerDate" style="font-size:13px; color:var(--muted); flex-shrink:0;">${formatDate(pinnedList[0].created_at)}</span>
