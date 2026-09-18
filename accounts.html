@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계정관리 - GOMANGO 점주 운영 게시판</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css?v=20260918a">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <div id="gnb"></div>
+
+  <main class="page-main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">계정관리</h1>
+        <p class="page-subtitle">매장 계정을 추가하거나 수정·삭제할 수 있습니다 (바이저 전용)</p>
+      </div>
+      <button id="writeBtn" class="btn-primary">+ 계정 추가</button>
+    </div>
+
+    <div id="writeForm" class="form-card hidden">
+      <div class="form-row">
+        <div class="form-field" style="flex:2;">
+          <label>이메일</label>
+          <input id="f_email" type="email" placeholder="store01@juicy.com">
+        </div>
+        <div class="form-field">
+          <label>권한</label>
+          <select id="f_role">
+            <option value="owner">점주</option>
+            <option value="visor">바이저</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex:2;">
+          <label>매장명</label>
+          <input id="f_store_name" type="text" placeholder="예: 강남점">
+        </div>
+        <div class="form-field">
+          <label id="passwordLabel">비밀번호</label>
+          <input id="f_password" type="text" placeholder="6자 이상">
+        </div>
+      </div>
+      <p id="passwordHint" style="font-size:12.5px; color:var(--muted); margin:0;">비밀번호는 6자 이상으로 입력해주세요.</p>
+      <div id="formError" class="error-text hidden"></div>
+      <div style="display:flex; gap:10px;">
+        <button id="submitBtn" class="btn-primary">등록</button>
+        <button id="cancelBtn" class="btn-link">취소</button>
+      </div>
+    </div>
+
+    <div id="accountList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
+  </main>
+
+  <script src="assets/supabaseClient.js?v=20260918a"></script>
+  <script src="assets/app.js?v=20260918a"></script>
+  <script>
+    let profileRef = null;
+    let sessionRef = null;
+    let editingId = null;
+    let allAccounts = [];
+
+    const ROLE_LABEL = { owner: "점주", visor: "바이저" };
+
+    // 계정 생성/수정/삭제/목록 조회는 관리자 권한이 필요해서 Edge Function(admin-users)을 통해 처리합니다.
+    async function callAdmin(action, payload) {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionRef.access_token}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ action, ...payload }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || "요청에 실패했습니다.");
+      return data;
+    }
+
+    function resetForm() {
+      editingId = null;
+      document.getElementById("f_email").value = "";
+      document.getElementById("f_email").disabled = false;
+      document.getElementById("f_store_name").value = "";
+      document.getElementById("f_role").value = "owner";
+      document.getElementById("f_password").value = "";
+      document.getElementById("passwordLabel").textContent = "비밀번호";
+      document.getElementById("passwordHint").textContent = "비밀번호는 6자 이상으로 입력해주세요.";
+      document.getElementById("submitBtn").textContent = "등록";
+      document.getElementById("submitBtn").disabled = false;
+      document.getElementById("writeForm").classList.add("hidden");
+      if (document.activeElement) document.activeElement.blur();
+    }
+
+    function startEdit(a) {
+      editingId = a.id;
+      document.getElementById("f_email").value = a.email || "";
+      document.getElementById("f_email").disabled = true;
+      document.getElementById("f_store_name").value = a.store_name || "";
+      document.getElementById("f_role").value = a.role;
+      document.getElementById("f_password").value = "";
+      document.getElementById("passwordLabel").textContent = "새 비밀번호 (선택)";
+      document.getElementById("passwordHint").textContent = "비밀번호를 바꾸지 않으려면 비워두세요.";
+      document.getElementById("submitBtn").textContent = "수정 저장";
+      document.getElementById("writeForm").classList.remove("hidden");
+      document.getElementById("writeForm").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function renderAccounts() {
+      const listEl = document.getElementById("accountList");
+      if (!allAccounts.length) {
+        listEl.innerHTML = '<div class="empty-state">등록된 계정이 없습니다</div>';
+        return;
+      }
+      listEl.innerHTML = allAccounts.map((a) => `
+        <div class="card resource-item" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:14px; flex-grow:1; min-width:0; flex-wrap:wrap;">
+            <span class="pill ${a.role === "visor" ? "pill-accent" : "pill-neutral"}">${ROLE_LABEL[a.role] || a.role}</span>
+            <span style="font-size:15px; font-weight:600;">${escapeHtml(a.store_name)}</span>
+            <span style="font-size:13px; color:var(--muted);">${escapeHtml(a.email || "")}</span>
+            ${a.id === (profileRef && profileRef.id) ? '<span class="pill pill-neutral" style="font-size:11px;">나</span>' : ""}
+          </div>
+          <div class="row-actions">
+            <button class="btn-edit" data-id="${a.id}" data-action="edit">수정</button>
+            <button class="btn-delete" data-id="${a.id}" data-action="delete" ${a.id === (profileRef && profileRef.id) ? "disabled" : ""}>삭제</button>
+          </div>
+        </div>
+      `).join("");
+
+      listEl.querySelectorAll("[data-action='edit']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const a = allAccounts.find((x) => x.id === btn.dataset.id);
+          if (a) startEdit(a);
+        });
+      });
+      listEl.querySelectorAll("[data-action='delete']").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (btn.disabled) return;
+          if (!confirm("이 계정을 삭제할까요? 삭제하면 되돌릴 수 없습니다.")) return;
+          btn.disabled = true;
+          try {
+            await callAdmin("delete", { id: btn.dataset.id });
+            loadAccounts();
+          } catch (e) {
+            alert("삭제에 실패했습니다: " + e.message);
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    async function loadAccounts() {
+      const listEl = document.getElementById("accountList");
+      try {
+        const data = await callAdmin("list", {});
+        allAccounts = data.accounts || [];
+        renderAccounts();
+      } catch (e) {
+        listEl.innerHTML = `<div class="empty-state">불러오기 실패: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    (async () => {
+      const auth = await requireAuth();
+      if (!auth) return;
+      profileRef = auth.profile;
+      sessionRef = auth.session;
+
+      if (!isVisor(profileRef)) {
+        location.replace("index");
+        return;
+      }
+
+      renderGnb("accounts", profileRef);
+      revealPage();
+
+      document.getElementById("writeBtn").addEventListener("click", () => {
+        resetForm();
+        document.getElementById("writeForm").classList.remove("hidden");
+        document.getElementById("writeForm").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      document.getElementById("cancelBtn").addEventListener("click", () => {
+        resetForm();
+      });
+
+      document.getElementById("submitBtn").addEventListener("click", async () => {
+        const errEl = document.getElementById("formError");
+        clearFormError(errEl);
+        const email = document.getElementById("f_email").value.trim();
+        const store_name = document.getElementById("f_store_name").value.trim();
+        const role = document.getElementById("f_role").value;
+        const password = document.getElementById("f_password").value;
+
+        if (!email || !store_name) {
+          showFormError(errEl, "이메일과 매장명을 모두 입력해주세요.");
+          return;
+        }
+        if (!editingId && (!password || password.length < 6)) {
+          showFormError(errEl, "비밀번호는 6자 이상으로 입력해주세요.");
+          return;
+        }
+        if (editingId && password && password.length < 6) {
+          showFormError(errEl, "비밀번호는 6자 이상으로 입력해주세요.");
+          return;
+        }
+
+        document.getElementById("submitBtn").disabled = true;
+        try {
+          if (editingId) {
+            await callAdmin("update", { id: editingId, store_name, role, password: password || undefined });
+          } else {
+            await callAdmin("create", { email, password, store_name, role });
+          }
+          resetForm();
+          loadAccounts();
+        } catch (e) {
+          showFormError(errEl, "저장에 실패했습니다: " + e.message);
+          document.getElementById("submitBtn").disabled = false;
+        }
+      });
+
+      loadAccounts();
+    })();
+  </script>
+</body>
+</html>
