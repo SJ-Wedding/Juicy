@@ -57,6 +57,16 @@
     </div>
 
     <div id="accountList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
+
+    <div class="card" style="margin-top:8px;">
+      <div style="font-size:15px; font-weight:700; color:var(--ink);">🗄 오래된 게시글 정리</div>
+      <p style="font-size:12.5px; color:var(--muted); margin:6px 0 12px; line-height:1.6;">
+        작성한 지 3개월이 지난 건의함·본사 발주 게시글(답변/댓글 포함)을 JSON 백업 파일로 내 컴퓨터에 다운로드한 뒤, DB에서 삭제해 저장공간을 확보합니다.
+        삭제 전에 대상 건수를 먼저 보여드리고, 한 번 더 확인을 거친 뒤에만 진행됩니다.
+      </p>
+      <button id="cleanupBtn" class="btn-outline">3개월 지난 게시글 정리하기</button>
+      <div id="cleanupStatus" class="hidden" style="font-size:13px; color:var(--muted); margin-top:10px;"></div>
+    </div>
   </main>
 
   <script src="assets/supabaseClient.js?v=20260918a"></script>
@@ -185,6 +195,90 @@
       }
     }
 
+    // ---------- 오래된 게시글(건의함/본사 발주) 백업 후 삭제 ----------
+    // 브라우저에서 sb 클라이언트로 직접 조회/삭제합니다 (바이저는 두 테이블 모두 전체 조회·삭제 권한이 RLS로 이미 허용되어 있어서
+    // 계정관리와 달리 관리자 권한(Edge Function)이 필요 없습니다). 답변/댓글은 DB에 ON DELETE CASCADE로 걸려있어 게시글을
+    // 지우면 함께 지워지므로, 백업 시점에 미리 함께 담아둡니다.
+    function downloadJson(filename, data) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function runCleanup() {
+      const btn = document.getElementById("cleanupBtn");
+      const statusEl = document.getElementById("cleanupStatus");
+      statusEl.classList.remove("hidden");
+      btn.disabled = true;
+      statusEl.textContent = "3개월 이상 지난 게시글을 확인하는 중...";
+
+      try {
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - 3);
+        const cutoffIso = cutoff.toISOString();
+
+        const [{ data: oldSuggestions, error: sErr }, { data: oldOrders, error: oErr }] = await Promise.all([
+          sb.from("suggestions").select("*, profiles(store_name), suggestion_replies(*)").lt("created_at", cutoffIso),
+          sb.from("supply_requests").select("*, profiles(store_name), supply_request_comments(*)").lt("created_at", cutoffIso),
+        ]);
+        if (sErr || oErr) throw new Error((sErr && sErr.message) || (oErr && oErr.message));
+
+        const suggestionCount = (oldSuggestions || []).length;
+        const orderCount = (oldOrders || []).length;
+        const total = suggestionCount + orderCount;
+
+        if (total === 0) {
+          statusEl.textContent = "3개월 이상 지난 건의함/본사 발주 게시글이 없습니다.";
+          btn.disabled = false;
+          return;
+        }
+
+        const confirmed = confirm(
+          `건의함 ${suggestionCount}건, 본사 발주 ${orderCount}건 (총 ${total}건)이 작성한 지 3개월을 넘었습니다.\n` +
+          `백업 파일을 다운로드한 뒤 DB에서 삭제합니다. 계속할까요?`
+        );
+        if (!confirmed) {
+          statusEl.textContent = "";
+          statusEl.classList.add("hidden");
+          btn.disabled = false;
+          return;
+        }
+
+        const stamp = new Date().toISOString().slice(0, 10);
+        downloadJson(`juicy-board-backup-${stamp}.json`, {
+          generated_at: new Date().toISOString(),
+          cutoff_date: cutoffIso,
+          suggestions: oldSuggestions,
+          supply_requests: oldOrders,
+        });
+
+        statusEl.textContent = "백업 파일을 다운로드했습니다. 삭제하는 중...";
+
+        const suggestionIds = (oldSuggestions || []).map((s) => s.id);
+        const orderIds = (oldOrders || []).map((o) => o.id);
+
+        const [delSug, delOrd] = await Promise.all([
+          suggestionIds.length ? sb.from("suggestions").delete().in("id", suggestionIds) : Promise.resolve({ error: null }),
+          orderIds.length ? sb.from("supply_requests").delete().in("id", orderIds) : Promise.resolve({ error: null }),
+        ]);
+        if (delSug.error || delOrd.error) {
+          throw new Error((delSug.error && delSug.error.message) || (delOrd.error && delOrd.error.message));
+        }
+
+        statusEl.textContent = `완료: 건의함 ${suggestionCount}건, 본사 발주 ${orderCount}건을 백업하고 삭제했습니다.`;
+      } catch (e) {
+        statusEl.textContent = "정리에 실패했습니다: " + e.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     (async () => {
       const auth = await requireAuth();
       if (!auth) return;
@@ -211,6 +305,7 @@
         searchQuery = e.target.value;
         renderAccounts();
       });
+      document.getElementById("cleanupBtn").addEventListener("click", runCleanup);
 
       document.getElementById("submitBtn").addEventListener("click", async () => {
         const errEl = document.getElementById("formError");
