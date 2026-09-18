@@ -6,7 +6,8 @@ const GNB_ITEMS = [
   { key: "home", href: "index.html", label: "홈" },
   { key: "recipes", href: "recipes.html", label: "신메뉴 레시피" },
   { key: "notices", href: "notices.html", label: "공지사항" },
-  { key: "suggestions", href: "suggestions.html", label: "건의함 · FAQ" },
+  { key: "suggestions", href: "suggestions.html", label: "건의함" },
+  { key: "faq", href: "faq.html", label: "FAQ" },
   { key: "orders", href: "orders.html", label: "본사 발주" },
   { key: "resources", href: "resources.html", label: "자료실" },
   { key: "company", href: "company.html", label: "업체 정보" },
@@ -58,7 +59,7 @@ function renderGnb(activeKey, profile) {
         <button id="gnbHamburger" class="gnb-hamburger" aria-label="메뉴 열기">
           <span></span><span></span><span></span>
         </button>
-        <a href="index.html" class="brand-logo" style="text-decoration:none;">GOMANGO</a>
+        <a href="index.html" style="text-decoration:none; display:flex; align-items:center;"><img src="assets/logo.png?v=20260918" alt="GOMANGO" class="brand-logo"></a>
         <span class="gnb-divider"></span>
         <span class="gnb-sub">파트너 게시판</span>
       </div>
