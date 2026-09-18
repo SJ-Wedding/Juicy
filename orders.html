@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>본사 발주 - GOMANGO 파트너 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=20260917d">
+<link rel="stylesheet" href="assets/style.css?v=20260918a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
@@ -28,7 +28,7 @@
 
     <div id="writeForm" class="form-card hidden">
       <div id="orderRows" style="display:flex; flex-direction:column; gap:12px;"></div>
-      <button id="addRowBtn" class="btn-link" style="align-self:flex-start;">+ 추가 요청 (최대 5개)</button>
+      <button id="addRowBtn" type="button" class="btn-outline" style="align-self:flex-start; width:fit-content;">+ 추가 요청 (최대 5개)</button>
       <div class="order-total" id="estimatedTotal"></div>
       <div id="formError" class="error-text hidden"></div>
       <div style="display:flex; gap:10px;">
@@ -56,8 +56,8 @@
     </div>
   </div>
 
-  <script src="assets/supabaseClient.js?v=20260917d"></script>
-  <script src="assets/app.js?v=20260917d"></script>
+  <script src="assets/supabaseClient.js?v=20260918a"></script>
+  <script src="assets/app.js?v=20260918a"></script>
   <script>
     // 발주 가능 품목 목록 (필요하면 이 배열만 수정하면 됩니다)
     // extraQty가 있는 품목은 "사이즈 선택 + 수량 선택"을 함께 보여줍니다.
@@ -212,10 +212,11 @@
         const unitPrice = priceMap[itemName] || 0;
         const multiplier = parseOrderQtyMultiplier(qtyStr);
         total += unitPrice * multiplier;
-        parts.push(`${itemName} ${formatWon(unitPrice * multiplier)}`);
+        parts.push(`${escapeHtml(itemName)} ${formatWon(unitPrice * multiplier)}`);
       });
-      document.getElementById("estimatedTotal").textContent =
-        formRows.length > 1 ? `예상 총 금액: ${formatWon(total)} (${parts.join(" + ")})` : `예상 금액: ${formatWon(total)}`;
+      const totalHtml = `<strong style="color:#C0392B; font-size:16px;">${formatWon(total)}</strong>`;
+      document.getElementById("estimatedTotal").innerHTML =
+        formRows.length > 1 ? `예상 총 금액: ${totalHtml} [${parts.join(" + ")}]` : `예상 금액: ${totalHtml}`;
     }
 
     // ---------- 발주 금액 설정 (바이저) ----------
@@ -453,6 +454,7 @@
       refreshEstimatedTotal();
       document.getElementById("submitBtn").textContent = "등록";
       document.getElementById("writeForm").classList.add("hidden");
+      if (document.activeElement) document.activeElement.blur();
     }
 
     (async () => {
@@ -501,6 +503,7 @@
 
       document.getElementById("writeBtn").addEventListener("click", () => {
         document.getElementById("writeForm").classList.remove("hidden");
+        document.getElementById("writeForm").scrollIntoView({ behavior: "smooth", block: "start" });
       });
       document.getElementById("cancelBtn").addEventListener("click", () => {
         resetForm();
