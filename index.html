@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GOMANGO 파트너 게시판</title>
+<title>GOMANGO 점주 운영 게시판</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="assets/style.css?v=20260918a">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -73,7 +73,7 @@
       document.getElementById("quickMenuGrid").innerHTML = `
         <a href="recipes" class="card quick-card">
           <div class="quick-icon" style="background:var(--accent-tint); color:var(--accent);">🍹</div>
-          <div class="quick-title">신메뉴 &amp; 레시피</div>
+          <div class="quick-title">레시피</div>
           <div class="quick-desc">신메뉴/기존 메뉴 제조 방법 영상과 레시피 카드를 확인하세요</div>
           <div class="quick-footer"><span class="pill pill-accent">NEW ${newRecipeCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
@@ -92,13 +92,13 @@
         <a href="orders" class="card quick-card">
           <div class="quick-icon" style="background:var(--secondary-tint); color:var(--secondary-dark);">📦</div>
           <div class="quick-title">본사 발주</div>
-          <div class="quick-desc">매장에 필요한 물품을 요청하면 담당자가 발주 확인 후 댓글로 안내드려요</div>
+          <div class="quick-desc">배망 / 유니폼 / 바스켓 등 발주를 요청하면 담당자가 발주 확인 후 댓글로 안내드려요.</div>
           <div class="quick-footer"><span class="pill pill-secondary">확인대기 ${orderPendingCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
         <a href="resources" class="card quick-card">
           <div class="quick-icon" style="background:var(--neutral-tint); color:#6B5B47;">📁</div>
           <div class="quick-title">자료실</div>
-          <div class="quick-desc">위생 체크리스트, POS 매뉴얼, 발주 서식 등 문서를 내려받으세요</div>
+          <div class="quick-desc">레시피 파일, 디자인 자료, 배달 등록 누끼 등 파일을 받아볼 수 있습니다.</div>
           <div class="quick-footer"><span class="pill pill-neutral">문서 ${resourceCount || 0}건</span><span style="font-size:13px; color:var(--muted);">바로가기 ›</span></div>
         </a>
         <a href="company" class="card quick-card">
@@ -195,7 +195,7 @@
               ${n.is_pinned ? '<span class="pill pill-amber-solid" style="font-size:11px;">필독</span>' : isWithinDays(n.created_at, 7) ? '<span class="pill pill-secondary" style="font-size:11px;">NEW</span>' : ""}
               <span style="font-size:14.5px; font-weight:500; ${previewStyle}">${escapeHtml(n.title)}</span>
             </div>
-            <span style="font-size:13px; color:var(--muted); flex-shrink:0;">${formatDateTime(n.created_at)}</span>
+            <span style="font-size:13px; color:var(--muted); flex-shrink:0;">${formatDate(n.created_at)}</span>
           </div>
           <span style="font-size:13px; color:var(--ink-soft); ${previewStyle}">${escapeHtml(truncate(n.content, 20))}</span>
         </div>
@@ -217,7 +217,7 @@
         <div class="list-row" style="flex-direction:column; align-items:stretch; gap:6px;">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
             <span style="font-size:14.5px; font-weight:500; ${previewStyle} flex-grow:1; min-width:0;">${escapeHtml(s.title)}</span>
-            <span style="font-size:13px; color:var(--muted); flex-shrink:0;">${formatDateTime(s.created_at)}</span>
+            <span style="font-size:13px; color:var(--muted); flex-shrink:0;">${formatDate(s.created_at)}</span>
           </div>
           <span style="font-size:13px; color:var(--ink-soft); ${previewStyle}">${escapeHtml(truncate(s.content, 20))}</span>
           ${latestReply ? `<span style="font-size:12.5px; color:var(--accent-dark); ${previewStyle}">↳ 답변: ${escapeHtml(truncate(latestReply.content, 20))}</span>` : ""}
