@@ -3,14 +3,14 @@
 // ============================================================
 
 const GNB_ITEMS = [
-  { key: "home", href: "index.html", label: "홈" },
-  { key: "recipes", href: "recipes.html", label: "신메뉴 레시피" },
-  { key: "notices", href: "notices.html", label: "공지사항" },
-  { key: "suggestions", href: "suggestions.html", label: "건의함" },
-  { key: "faq", href: "faq.html", label: "FAQ" },
-  { key: "orders", href: "orders.html", label: "본사 발주" },
-  { key: "resources", href: "resources.html", label: "자료실" },
-  { key: "company", href: "company.html", label: "업체 정보" },
+  { key: "home", href: "index", label: "홈" },
+  { key: "recipes", href: "recipes", label: "신메뉴 레시피" },
+  { key: "notices", href: "notices", label: "공지사항" },
+  { key: "suggestions", href: "suggestions", label: "건의함" },
+  { key: "faq", href: "faq", label: "FAQ" },
+  { key: "orders", href: "orders", label: "본사 발주" },
+  { key: "resources", href: "resources", label: "자료실" },
+  { key: "company", href: "company", label: "업체 정보" },
 ];
 
 // 페이지는 기본적으로 style.css에 의해 숨겨져 있습니다 (html:not(.js-ready) body{visibility:hidden}).
@@ -23,7 +23,7 @@ function revealPage() {
 async function requireAuth() {
   const { data: { session }, error } = await sb.auth.getSession();
   if (error || !session) {
-    location.replace("login.html");
+    location.replace("login");
     return null;
   }
   const { data: profile, error: profileError } = await sb
@@ -59,7 +59,7 @@ function renderGnb(activeKey, profile) {
         <button id="gnbHamburger" class="gnb-hamburger" aria-label="메뉴 열기">
           <span></span><span></span><span></span>
         </button>
-        <a href="index.html" style="text-decoration:none; display:flex; align-items:center;"><img src="assets/logo.png?v=20260918" alt="GOMANGO" class="brand-logo"></a>
+        <a href="index" style="text-decoration:none; display:flex; align-items:center;"><img src="assets/logo.png?v=20260918" alt="GOMANGO" class="brand-logo"></a>
         <span class="gnb-divider"></span>
         <span class="gnb-sub">파트너 게시판</span>
       </div>
@@ -75,7 +75,7 @@ function renderGnb(activeKey, profile) {
 
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     await sb.auth.signOut();
-    location.href = "login.html";
+    location.href = "login";
   });
 
   const hamburger = document.getElementById("gnbHamburger");
