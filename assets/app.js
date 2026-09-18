@@ -43,6 +43,35 @@ function isVisor(profile) {
   return !!profile && profile.role === "visor";
 }
 
+// ============================================================
+// 아이디 로그인 지원
+// Supabase Auth는 이메일(또는 전화번호)로만 로그인할 수 있어서, 화면에서는 "아이디"만
+// 입력받고 내부적으로 가짜 이메일 주소(아이디@juicy-board.local)로 변환해서 사용합니다.
+// (실제 발송되지 않는 주소라, 이메일로 보내는 "비밀번호 찾기" 기능은 사용할 수 없고,
+//  비밀번호 재설정은 계정관리 화면에서 바이저가 직접 눌러줘야 합니다.)
+// "@"가 포함된 값을 입력하면(예: 예전에 실제 이메일로 만들어둔 계정) 변환하지 않고 그대로 씁니다.
+// ============================================================
+const ID_EMAIL_DOMAIN = "juicy-board.local";
+
+function idToEmail(id) {
+  const trimmed = String(id || "").trim();
+  return trimmed.includes("@") ? trimmed : `${trimmed}@${ID_EMAIL_DOMAIN}`;
+}
+
+// 이메일에서 표시용 아이디만 꺼냅니다. 우리가 만든 가짜 도메인이면 아이디만 보여주고,
+// (예전에 만들어둔) 실제 이메일이면 그 이메일을 그대로 보여줍니다.
+function emailToId(email) {
+  const value = String(email || "");
+  const suffix = `@${ID_EMAIL_DOMAIN}`;
+  return value.endsWith(suffix) ? value.slice(0, -suffix.length) : value;
+}
+
+// 아이디로 쓸 수 있는 문자만 허용합니다 (영문 소문자/숫자/. _ -), 가짜 이메일로 변환했을 때
+// 유효한 이메일 형식이 되도록 하기 위함입니다.
+function isValidLoginId(id) {
+  return /^[a-z0-9._-]{2,40}$/i.test(String(id || "").trim());
+}
+
 // GNB를 #gnb 요소 안에 그려줍니다. (모바일에서는 햄버거 버튼으로 접이식 메뉴가 열립니다)
 function renderGnb(activeKey, profile) {
   const gnbEl = document.getElementById("gnb");
