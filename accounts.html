@@ -52,6 +52,10 @@
       </div>
     </div>
 
+    <div style="display:flex; justify-content:flex-end;">
+      <input id="searchInput" type="text" placeholder="🔍 아이디 또는 매장명 검색" style="width:260px; max-width:100%; font-family:inherit; font-size:13.5px; padding:9px 12px; border:1px solid var(--border); border-radius:8px;">
+    </div>
+
     <div id="accountList" style="display:flex; flex-direction:column;"><div class="empty-state">불러오는 중...</div></div>
   </main>
 
@@ -62,6 +66,7 @@
     let sessionRef = null;
     let editingId = null;
     let allAccounts = [];
+    let searchQuery = "";
 
     const ROLE_LABEL = { owner: "점주", visor: "바이저" };
 
@@ -110,13 +115,29 @@
       document.getElementById("writeForm").scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
+    // 아이디/매장명 기준으로 검색어와 일치하는 계정만 보여줍니다.
+    function getFilteredAccounts() {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return allAccounts;
+      return allAccounts.filter((a) => {
+        const idText = emailToId(a.email || "").toLowerCase();
+        const storeText = (a.store_name || "").toLowerCase();
+        return idText.includes(q) || storeText.includes(q);
+      });
+    }
+
     function renderAccounts() {
       const listEl = document.getElementById("accountList");
       if (!allAccounts.length) {
         listEl.innerHTML = '<div class="empty-state">등록된 계정이 없습니다</div>';
         return;
       }
-      listEl.innerHTML = allAccounts.map((a) => `
+      const filtered = getFilteredAccounts();
+      if (!filtered.length) {
+        listEl.innerHTML = '<div class="empty-state">검색 결과가 없습니다</div>';
+        return;
+      }
+      listEl.innerHTML = filtered.map((a) => `
         <div class="card resource-item" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
           <div style="display:flex; align-items:center; gap:14px; flex-grow:1; min-width:0; flex-wrap:wrap;">
             <span class="pill ${a.role === "visor" ? "pill-accent" : "pill-neutral"}">${ROLE_LABEL[a.role] || a.role}</span>
@@ -185,6 +206,10 @@
       });
       document.getElementById("cancelBtn").addEventListener("click", () => {
         resetForm();
+      });
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        searchQuery = e.target.value;
+        renderAccounts();
       });
 
       document.getElementById("submitBtn").addEventListener("click", async () => {
